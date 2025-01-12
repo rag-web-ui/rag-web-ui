@@ -141,11 +141,26 @@ async def upload_kb_document(
     
     upload_result = await upload_document(file, kb_id)
     
+    # Check if a document with the same hash already exists in this knowledge base
+    existing_document = db.query(Document).filter(
+        Document.file_hash == upload_result.file_hash,
+        Document.knowledge_base_id == kb_id
+    ).first()
+    
+    if existing_document:
+        # Return the existing document instead of creating a new one
+        return {
+            "document_id": existing_document.id,
+            "file_path": existing_document.file_path,
+            "is_duplicate": True
+        }
+    
     document = Document(
         title=file.filename,
         file_path=upload_result.file_path,
         file_size=upload_result.file_size,
         content_type=upload_result.content_type,
+        file_hash=upload_result.file_hash,
         knowledge_base_id=kb_id
     )
     db.add(document)
@@ -154,7 +169,8 @@ async def upload_kb_document(
     
     return {
         "document_id": document.id,
-        "file_path": upload_result.file_path
+        "file_path": upload_result.file_path,
+        "is_duplicate": False
     }
 
 # Step 2: Preview chunks

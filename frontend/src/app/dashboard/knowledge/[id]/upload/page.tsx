@@ -14,6 +14,12 @@ interface FileStatus {
   error?: string;
 }
 
+interface UploadResponse {
+  document_id: number;
+  file_path: string;
+  is_duplicate: boolean;
+}
+
 export default function UploadPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [files, setFiles] = useState<FileStatus[]>([]);
@@ -45,8 +51,8 @@ export default function UploadPage({ params }: { params: { id: string } }) {
     formData.append("file", fileStatus.file);
 
     try {
-      await api.post(
-        `http://localhost:8000/api/knowledge-base/${params.id}/upload`,
+      const data: UploadResponse = await api.post(
+        `http://localhost:8000/api/knowledge-base/${params.id}/document/upload`,
         formData,
         {
           // Don't set Content-Type header, let the browser set it with the boundary
@@ -62,7 +68,9 @@ export default function UploadPage({ params }: { params: { id: string } }) {
 
       toast({
         title: "Success",
-        description: `${fileStatus.file.name} uploaded successfully`,
+        description: data.is_duplicate
+          ? `${fileStatus.file.name} already exists in the knowledge base. Using existing file.`
+          : `${fileStatus.file.name} uploaded successfully`,
       });
     } catch (error) {
       const errorMessage =

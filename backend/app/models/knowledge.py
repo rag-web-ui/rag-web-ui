@@ -25,6 +25,7 @@ class Document(Base, TimestampMixin):
     file_path = Column(String(255), nullable=False)  # Path in MinIO
     file_size = Column(Integer)  # File size in bytes
     content_type = Column(String(100))  # MIME type
+    file_hash = Column(String(64), index=True)  # SHA-256 hash of file content
     knowledge_base_id = Column(Integer, ForeignKey("knowledge_bases.id"), nullable=False)
     
     # Relationships

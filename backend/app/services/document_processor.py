@@ -1,8 +1,10 @@
+import logging
 import os
-from typing import Optional, List, Dict
-from io import BytesIO
+import hashlib
 import tempfile
 import traceback
+from io import BytesIO
+from typing import Optional, List, Dict
 from fastapi import UploadFile
 from langchain_community.document_loaders import (
     PyPDFLoader,
@@ -15,16 +17,16 @@ from langchain_core.documents import Document as LangchainDocument
 from pydantic import BaseModel
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
+from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.minio import get_minio_client
-import logging
-from sqlalchemy.orm import Session
 from app.models.knowledge import ProcessingTask
 
 class UploadResult(BaseModel):
     file_path: str
     file_size: int
     content_type: str
+    file_hash: str
 
 class TextChunk(BaseModel):
     content: str
@@ -39,6 +41,9 @@ async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
     content = await file.read()
     file_size = len(content)
     
+    # Calculate SHA-256 hash of file content
+    file_hash = hashlib.sha256(content).hexdigest()
+    
     # Get file extension
     _, ext = os.path.splitext(file.filename)
     ext = ext.lower()
@@ -50,6 +55,7 @@ async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
         ".md": "text/markdown",
         ".txt": "text/plain"
     }
+    
     content_type = content_types.get(ext, "application/octet-stream")
     
     # Upload to MinIO
@@ -66,7 +72,8 @@ async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
     return UploadResult(
         file_path=object_path,
         file_size=file_size,
-        content_type=content_type
+        content_type=content_type,
+        file_hash=file_hash
     )
 
 async def preview_document(file_path: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> PreviewResult:
@@ -175,13 +182,10 @@ async def process_document_background(
 ):
     """Background task for processing document"""
     try:
-        import logging
         logging.basicConfig(level=logging.INFO)
         logger = logging.getLogger(__name__)
         
         logger.info(f"Starting document processing for file: {file_path}, kb_id: {kb_id}, task_id: {task_id}")
-        
-        from app.models.knowledge import ProcessingTask
         
         # Process document
         logger.info("Calling process_document...")
@@ -197,7 +201,6 @@ async def process_document_background(
             logger.info(f"Task {task_id} marked as completed")
             
     except Exception as e:
-        import traceback
         logger.error(f"Error processing document: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         

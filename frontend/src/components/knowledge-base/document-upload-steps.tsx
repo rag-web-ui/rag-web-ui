@@ -20,6 +20,7 @@ interface DocumentUploadStepsProps {
 interface UploadResponse {
   document_id: number;
   file_path: string;
+  is_duplicate: boolean;
 }
 
 interface PreviewChunk {
@@ -61,7 +62,7 @@ export function DocumentUploadSteps({
 
     setIsLoading(true);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", file, file.name);
 
     try {
       const data = await api.post(
@@ -77,7 +78,9 @@ export function DocumentUploadSteps({
       setCurrentStep(2);
       toast({
         title: "Upload successful",
-        description: "File has been uploaded successfully.",
+        description: data.is_duplicate
+          ? "File already exists in the knowledge base. Using existing file."
+          : "File has been uploaded successfully.",
       });
     } catch (error) {
       toast({
