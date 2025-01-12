@@ -38,10 +38,8 @@ export default function KnowledgeBasePage() {
 
   const fetchKnowledgeBases = async () => {
     try {
-      const data = await api.get<KnowledgeBase[]>(
-        "http://localhost:8000/api/knowledge-base"
-      );
-      setKnowledgeBases(data as KnowledgeBase[]);
+      const data = await api.get("http://localhost:8000/api/knowledge-base");
+      setKnowledgeBases(data);
     } catch (error) {
       console.error("Failed to fetch knowledge bases:", error);
       if (error instanceof ApiError) {
@@ -59,9 +57,8 @@ export default function KnowledgeBasePage() {
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this knowledge base?"))
       return;
-
     try {
-      await api.delete<void>(`http://localhost:8000/api/knowledge-base/${id}`);
+      await api.delete(`http://localhost:8000/api/knowledge-base/${id}`);
       setKnowledgeBases((prev) => prev.filter((kb) => kb.id !== id));
       toast({
         title: "Success",
@@ -120,17 +117,15 @@ export default function KnowledgeBasePage() {
                 <div className="flex space-x-2">
                   <Link
                     href={`/dashboard/knowledge/${kb.id}`}
-                    className="inline-flex items-center justify-center rounded-md bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+                    className="inline-flex items-center justify-center rounded-md bg-secondary w-8 h-8"
                   >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Manage
+                    <Settings className="h-4 w-4" />
                   </Link>
                   <button
                     onClick={() => handleDelete(kb.id)}
-                    className="inline-flex items-center justify-center rounded-md bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+                    className="inline-flex items-center justify-center rounded-md bg-destructive/10 hover:bg-destructive/20 w-8 h-8"
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
+                    <Trash2 className="h-4 w-4 text-destructive" />
                   </button>
                 </div>
               </div>
