@@ -1,3 +1,4 @@
+import hashlib
 from typing import List, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
@@ -12,7 +13,7 @@ from app.schemas.knowledge import (
     KnowledgeBaseUpdate,
     DocumentResponse
 )
-from app.services.document_processor import process_document_background, upload_document, preview_document, process_document, PreviewResult
+from app.services.document_processor import process_document_background, upload_document, preview_document, PreviewResult
 
 router = APIRouter()
 
@@ -139,28 +140,34 @@ async def upload_kb_document(
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     
-    upload_result = await upload_document(file, kb_id)
+    # First calculate hash from the file content
+    file_content = await file.read()
+    file_hash = hashlib.sha256(file_content).hexdigest()
     
-    # Check if a document with the same hash already exists in this knowledge base
+    # Check if a document with the same hash already exists
     existing_document = db.query(Document).filter(
-        Document.file_hash == upload_result.file_hash,
+        Document.file_hash == file_hash,
         Document.knowledge_base_id == kb_id
     ).first()
     
     if existing_document:
-        # Return the existing document instead of creating a new one
         return {
             "document_id": existing_document.id,
             "file_path": existing_document.file_path,
             "is_duplicate": True
         }
     
+    # Reset file position for upload
+    await file.seek(0)
+    # Only upload if the file is new
+    upload_result = await upload_document(file, kb_id)
+    
     document = Document(
         title=file.filename,
         file_path=upload_result.file_path,
         file_size=upload_result.file_size,
         content_type=upload_result.content_type,
-        file_hash=upload_result.file_hash,
+        file_hash=file_hash,
         knowledge_base_id=kb_id
     )
     db.add(document)

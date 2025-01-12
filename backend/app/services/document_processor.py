@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.core.minio import get_minio_client
 from app.models.knowledge import ProcessingTask
 from app.services.chunk_record import ChunkRecord
+import uuid
 
 class UploadResult(BaseModel):
     file_path: str
@@ -139,14 +140,15 @@ async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
     content = await file.read()
     file_size = len(content)
     
-    # Calculate SHA-256 hash of file content
     file_hash = hashlib.sha256(content).hexdigest()
     
-    # Get file extension
-    _, ext = os.path.splitext(file.filename)
+    base_name, ext = os.path.splitext(file.filename)
+    base_name = "".join(c for c in base_name if c.isalnum() or c in ('-', '_')).strip()
     ext = ext.lower()
+
+    unique_filename = f"{base_name}_{uuid.uuid4().hex}{ext}"
+    object_path = f"kb_{kb_id}/{unique_filename}"
     
-    # Determine content type
     content_types = {
         ".pdf": "application/pdf",
         ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -158,15 +160,18 @@ async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
     
     # Upload to MinIO
     minio_client = get_minio_client()
-    object_path = f"kb_{kb_id}/{file.filename}"
-    minio_client.put_object(
-        bucket_name=settings.MINIO_BUCKET_NAME,
-        object_name=object_path,
-        data=BytesIO(content),
-        length=file_size,
-        content_type=content_type
-    )
-    
+    try:
+        minio_client.put_object(
+            bucket_name=settings.MINIO_BUCKET_NAME,
+            object_name=object_path,
+            data=BytesIO(content),
+            length=file_size,
+            content_type=content_type
+        )
+    except Exception as e:
+        logging.error(f"Failed to upload file to MinIO: {str(e)}")
+        raise
+        
     return UploadResult(
         file_path=object_path,
         file_size=file_size,
