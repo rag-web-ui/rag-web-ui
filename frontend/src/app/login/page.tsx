@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, ApiError } from "@/lib/utils";
+import { api, ApiError } from "@/lib/api";
+
+interface LoginResponse {
+  access_token: string;
+  token_type: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,12 +25,13 @@ export default function LoginPage() {
     const password = formData.get("password");
 
     try {
-      const data = await api.post(
+      const formUrlEncoded = new URLSearchParams();
+      formUrlEncoded.append("username", username as string);
+      formUrlEncoded.append("password", password as string);
+
+      const data = await api.post<LoginResponse>(
         "http://localhost:8000/api/auth/token",
-        new URLSearchParams({
-          username: username as string,
-          password: password as string,
-        }).toString(),
+        formUrlEncoded,
         {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",

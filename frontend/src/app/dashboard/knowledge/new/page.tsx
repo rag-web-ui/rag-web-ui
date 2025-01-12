@@ -3,8 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { api, ApiError } from "@/lib/utils";
+import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+
+interface KnowledgeBase {
+  id: number;
+  name: string;
+  description: string;
+  documents: any[];
+  created_at: string;
+}
 
 export default function NewKnowledgeBasePage() {
   const router = useRouter();
@@ -19,13 +27,16 @@ export default function NewKnowledgeBasePage() {
 
     try {
       const formData = new FormData(e.currentTarget);
-      const name = formData.get("name");
-      const description = formData.get("description");
+      const name = formData.get("name") as string;
+      const description = formData.get("description") as string;
 
-      const data = await api.post("http://localhost:8000/api/knowledge-base", {
-        name,
-        description,
-      });
+      const data = await api.post<KnowledgeBase>(
+        "http://localhost:8000/api/knowledge-base",
+        {
+          name,
+          description,
+        }
+      );
 
       router.push(`/dashboard/knowledge/${data.id}`);
     } catch (error) {

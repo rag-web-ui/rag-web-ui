@@ -1,6 +1,6 @@
 import hashlib
-from typing import List, Any
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from typing import List, Any, Dict
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -270,4 +270,169 @@ async def get_processing_task(
         "task_id": task.id,
         "status": task.status,
         "error_message": task.error_message
+    }
+
+# Batch upload documents
+@router.post("/{kb_id}/documents/upload")
+async def upload_kb_documents(
+    kb_id: int,
+    files: List[UploadFile],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload multiple documents to MinIO"""
+    kb = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.user_id == current_user.id
+    ).first()
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    
+    results = []
+    for file in files:
+        # Calculate hash from the file content
+        file_content = await file.read()
+        file_hash = hashlib.sha256(file_content).hexdigest()
+        
+        # Check if a document with the same hash already exists
+        existing_document = db.query(Document).filter(
+            Document.file_hash == file_hash,
+            Document.knowledge_base_id == kb_id
+        ).first()
+        
+        if existing_document:
+            results.append({
+                "document_id": existing_document.id,
+                "file_path": existing_document.file_path,
+                "file_name": file.filename,
+                "is_duplicate": True
+            })
+            continue
+        
+        # Reset file position for upload
+        await file.seek(0)
+        # Only upload if the file is new
+        upload_result = await upload_document(file, kb_id)
+        
+        document = Document(
+            title=file.filename,
+            file_path=upload_result.file_path,
+            file_size=upload_result.file_size,
+            content_type=upload_result.content_type,
+            file_hash=file_hash,
+            knowledge_base_id=kb_id
+        )
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+        
+        results.append({
+            "document_id": document.id,
+            "file_path": upload_result.file_path,
+            "file_name": file.filename,
+            "is_duplicate": False
+        })
+    
+    return results
+
+# Batch preview documents
+@router.post("/{kb_id}/documents/preview")
+async def preview_kb_documents(
+    kb_id: int,
+    document_ids: List[int],
+    chunk_size: int = 1000,
+    chunk_overlap: int = 200,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Dict[int, PreviewResult]:
+    """Preview multiple documents' chunks"""
+    results = {}
+    for doc_id in document_ids:
+        document = db.query(Document).join(KnowledgeBase).filter(
+            Document.id == doc_id,
+            Document.knowledge_base_id == kb_id,
+            KnowledgeBase.user_id == current_user.id
+        ).first()
+        if not document:
+            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+        
+        preview = await preview_document(
+            document.file_path,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
+        )
+        results[doc_id] = preview
+    
+    return results
+
+# Batch process documents
+@router.post("/{kb_id}/documents/process")
+async def process_kb_documents(
+    kb_id: int,
+    document_ids: List[int],
+    background_tasks: BackgroundTasks,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 200,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Process multiple documents asynchronously"""
+    tasks = []
+    for doc_id in document_ids:
+        document = db.query(Document).join(KnowledgeBase).filter(
+            Document.id == doc_id,
+            Document.knowledge_base_id == kb_id,
+            KnowledgeBase.user_id == current_user.id
+        ).first()
+        if not document:
+            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+        
+        task = ProcessingTask(
+            document_id=doc_id,
+            knowledge_base_id=kb_id,
+            status="pending"
+        )
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        
+        print(f"Processing task created: {task.id}")
+        background_tasks.add_task(
+            process_document_background,
+            document.file_path,
+            kb_id,
+            task.id,
+            db,
+            chunk_size,
+            chunk_overlap
+        )
+        tasks.append({"document_id": doc_id, "task_id": task.id})
+    
+    return {"tasks": tasks}
+
+# Get batch processing status
+@router.get("/{kb_id}/documents/tasks")
+async def get_processing_tasks(
+    kb_id: int,
+    task_ids: str = Query(..., description="Comma-separated list of task IDs to check status for"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get status of multiple processing tasks"""
+    # Convert comma-separated string to list of integers
+    task_id_list = [int(id.strip()) for id in task_ids.split(",")]
+    
+    tasks = db.query(ProcessingTask).join(KnowledgeBase).filter(
+        ProcessingTask.id.in_(task_id_list),
+        ProcessingTask.knowledge_base_id == kb_id,
+        KnowledgeBase.user_id == current_user.id
+    ).all()
+    
+    return {
+        task.id: {
+            "document_id": task.document_id,
+            "status": task.status,
+            "error_message": task.error_message
+        }
+        for task in tasks
     }

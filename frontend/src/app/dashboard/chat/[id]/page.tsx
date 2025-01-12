@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useChat } from "ai/react";
 import { Send } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { api, ApiError } from "@/lib/utils";
+import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 
 interface Message {

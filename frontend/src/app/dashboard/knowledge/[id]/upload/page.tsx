@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { Upload, X, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { api, ApiError } from "@/lib/utils";
+import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 
 interface FileStatus {
@@ -25,15 +25,26 @@ export default function UploadPage({ params }: { params: { id: string } }) {
   const [files, setFiles] = useState<FileStatus[]>([]);
   const { toast } = useToast();
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    setFiles((prev) => [
-      ...prev,
-      ...acceptedFiles.map((file) => ({
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const newFiles = acceptedFiles.map((file) => ({
         file,
         status: "pending" as const,
-      })),
-    ]);
-  }, []);
+      }));
+      setFiles((prev) => [...prev, ...newFiles]);
+
+      // Upload each file
+      newFiles.forEach(async (fileStatus) => {
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.file === fileStatus.file ? { ...f, status: "uploading" } : f
+          )
+        );
+        await handleUpload(fileStatus.file);
+      });
+    },
+    [handleUpload]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -46,52 +57,47 @@ export default function UploadPage({ params }: { params: { id: string } }) {
     },
   });
 
-  const uploadFile = async (fileStatus: FileStatus) => {
+  const handleUpload = async (file: File) => {
     const formData = new FormData();
-    formData.append("file", fileStatus.file);
+    formData.append("file", file);
 
     try {
-      const data: UploadResponse = await api.post(
-        `http://localhost:8000/api/knowledge-base/${params.id}/document/upload`,
-        formData,
-        {
-          // Don't set Content-Type header, let the browser set it with the boundary
-          headers: {},
-        }
+      const data = await api.post<UploadResponse>(
+        `http://localhost:8000/api/knowledge-base/${params.id}/documents/upload`,
+        formData
       );
 
       setFiles((prev) =>
         prev.map((f) =>
-          f.file === fileStatus.file ? { ...f, status: "success" } : f
-        )
-      );
-
-      toast({
-        title: "Success",
-        description: data.is_duplicate
-          ? `${fileStatus.file.name} already exists in the knowledge base. Using existing file.`
-          : `${fileStatus.file.name} uploaded successfully`,
-      });
-    } catch (error) {
-      const errorMessage =
-        error instanceof ApiError ? error.message : "Upload failed";
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.file === fileStatus.file
+          f.file === file
             ? {
                 ...f,
-                status: "error",
-                error: errorMessage,
+                status: "success",
               }
             : f
         )
       );
 
       toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
+        title: "Success",
+        description: data.is_duplicate
+          ? "File was already uploaded"
+          : "File uploaded successfully",
       });
+    } catch (error) {
+      console.error("Failed to upload file:", error);
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.file === file
+            ? {
+                ...f,
+                status: "error",
+                error:
+                  error instanceof ApiError ? error.message : "Upload failed",
+              }
+            : f
+        )
+      );
     }
   };
 
@@ -103,7 +109,7 @@ export default function UploadPage({ params }: { params: { id: string } }) {
           f.file === fileStatus.file ? { ...f, status: "uploading" } : f
         )
       );
-      await uploadFile(fileStatus);
+      await handleUpload(fileStatus.file);
     }
   };
 
@@ -173,7 +179,7 @@ export default function UploadPage({ params }: { params: { id: string } }) {
                   <div className="flex items-center space-x-2">
                     {fileStatus.status === "pending" && (
                       <button
-                        onClick={() => uploadFile(fileStatus)}
+                        onClick={() => handleUpload(fileStatus.file)}
                         className="text-primary hover:text-primary/80"
                       >
                         Upload

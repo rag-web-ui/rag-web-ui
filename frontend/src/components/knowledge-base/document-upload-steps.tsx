@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { FileIcon, defaultStyles } from "react-file-icon";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,15 +9,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Upload } from "lucide-react";
-import { cn, api, ApiError } from "@/lib/utils";
+import { Loader2, Upload, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { api, ApiError } from "@/lib/api";
+import { useDropzone } from "react-dropzone";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DocumentUploadStepsProps {
   knowledgeBaseId: number;
   onComplete?: () => void;
 }
 
-interface UploadResponse {
+interface FileStatus {
+  file: File;
+  status: "pending" | "uploading" | "uploaded" | "error";
+  documentId?: number;
+  filePath?: string;
+  error?: string;
+}
+
+interface UploadResult {
+  file_name: string;
   document_id: number;
   file_path: string;
   is_duplicate: boolean;
@@ -34,9 +52,24 @@ interface PreviewResponse {
 }
 
 interface TaskResponse {
-  task_id: number;
+  tasks: Array<{
+    document_id: number;
+    task_id: number;
+  }>;
+}
+
+interface TaskStatus {
+  document_id: number;
   status: "pending" | "processing" | "completed" | "failed";
   error_message?: string;
+}
+
+interface TaskStatusMap {
+  [key: number]: TaskStatus;
+}
+
+interface TaskStatusResponse {
+  [key: string]: TaskStatus;
 }
 
 export function DocumentUploadSteps({
@@ -44,43 +77,92 @@ export function DocumentUploadSteps({
   onComplete,
 }: DocumentUploadStepsProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadResponse, setUploadResponse] = useState<UploadResponse | null>(
+  const [files, setFiles] = useState<FileStatus[]>([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState<{
+    [key: number]: PreviewResponse;
+  }>({});
+  const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(
     null
   );
-  const [previewResponse, setPreviewResponse] =
-    useState<PreviewResponse | null>(null);
-  const [taskResponse, setTaskResponse] = useState<TaskResponse | null>(null);
+  const [taskStatuses, setTaskStatuses] = useState<{
+    [key: number]: TaskStatus;
+  }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [chunkSize, setChunkSize] = useState(1000);
   const [chunkOverlap, setChunkOverlap] = useState(200);
   const { toast } = useToast();
 
-  // Step 1: Upload file
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setFiles((prev) => [
+      ...prev,
+      ...acceptedFiles.map((file) => ({
+        file,
+        status: "pending" as const,
+      })),
+    ]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
+      "text/plain": [".txt"],
+      "text/markdown": [".md"],
+    },
+  });
+
+  const removeFile = (file: File) => {
+    setFiles((prev) => prev.filter((f) => f.file !== file));
+  };
+
+  // Step 1: Upload files
   const handleFileUpload = async () => {
-    if (!file) return;
+    const pendingFiles = files.filter((f) => f.status === "pending");
+    if (pendingFiles.length === 0) return;
 
     setIsLoading(true);
-    const formData = new FormData();
-    formData.append("file", file, file.name);
-
     try {
-      const data = await api.post(
-        `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/document/upload`,
+      const formData = new FormData();
+      pendingFiles.forEach((fileStatus) => {
+        formData.append("files", fileStatus.file);
+      });
+
+      const data = (await api.post(
+        `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/upload`,
         formData,
         {
-          // Don't set Content-Type header, let the browser set it with the boundary
           headers: {},
         }
+      )) as UploadResult[];
+
+      // Update file statuses
+      setFiles((prev) =>
+        prev.map((f) => {
+          const uploadResult = data.find((d) => d.file_name === f.file.name);
+          if (uploadResult) {
+            return {
+              ...f,
+              status: "uploaded",
+              documentId: uploadResult.document_id,
+              filePath: uploadResult.file_path,
+            };
+          }
+          return f;
+        })
       );
 
-      setUploadResponse(data);
+      // Set the first document as selected by default
+      const firstUploadedFile = data[0];
+      if (firstUploadedFile) {
+        setSelectedDocumentId(firstUploadedFile.document_id);
+      }
+
       setCurrentStep(2);
       toast({
         title: "Upload successful",
-        description: data.is_duplicate
-          ? "File already exists in the knowledge base. Using existing file."
-          : "File has been uploaded successfully.",
+        description: `${data.length} files uploaded successfully.`,
       });
     } catch (error) {
       toast({
@@ -96,22 +178,20 @@ export function DocumentUploadSteps({
 
   // Step 2: Preview chunks
   const handlePreview = async () => {
-    if (!uploadResponse) return;
+    if (!selectedDocumentId) return;
 
     setIsLoading(true);
     try {
       const data = await api.post(
-        `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/document/${uploadResponse.document_id}/preview`,
-        {
-          chunk_size: chunkSize,
-          chunk_overlap: chunkOverlap,
-        }
+        `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/preview`,
+        [selectedDocumentId]
       );
 
-      setPreviewResponse(data);
+      setUploadedDocuments(data);
+
       toast({
         title: "Preview generated",
-        description: `Generated ${data.total_chunks} chunks.`,
+        description: "Document preview generated successfully.",
       });
     } catch (error) {
       toast({
@@ -125,22 +205,37 @@ export function DocumentUploadSteps({
     }
   };
 
-  // Step 3: Process document
+  // Step 3: Process documents
   const handleProcess = async () => {
-    if (!uploadResponse) return;
+    const uploadedFiles = files.filter((f) => f.status === "uploaded");
+    if (uploadedFiles.length === 0) return;
 
     setIsLoading(true);
     try {
-      const data = await api.post(
-        `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/document/${uploadResponse.document_id}/process?` +
-          new URLSearchParams({
-            chunk_size: chunkSize.toString(),
-            chunk_overlap: chunkOverlap.toString(),
-          })
-      );
+      const documentIds = uploadedFiles.map((f) => f.documentId!);
+      const data = (await api.post(
+        `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/process`,
+        documentIds
+      )) as TaskResponse;
 
-      setTaskResponse(data);
-      pollTaskStatus(data.task_id);
+      // Initialize task statuses
+      const initialStatuses = data.tasks.reduce<TaskStatusMap>(
+        (
+          acc: TaskStatusMap,
+          task: { document_id: number; task_id: number }
+        ) => ({
+          ...acc,
+          [task.task_id]: {
+            document_id: task.document_id,
+            status: "pending" as const,
+          },
+        }),
+        {}
+      );
+      setTaskStatuses(initialStatuses);
+
+      // Start polling for task status
+      pollTaskStatus(data.tasks.map((t: { task_id: number }) => t.task_id));
     } catch (error) {
       toast({
         title: "Processing failed",
@@ -153,31 +248,50 @@ export function DocumentUploadSteps({
   };
 
   // Poll task status
-  const pollTaskStatus = async (taskId: number) => {
-    if (!uploadResponse) return;
-
+  const pollTaskStatus = async (taskIds: number[]) => {
     const poll = async () => {
       try {
-        const data = await api.get(
-          `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/document/${uploadResponse.document_id}/task/${taskId}`
+        const response = (await api.get(
+          `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/tasks?task_ids=${taskIds.join(
+            ","
+          )}`
+        )) as TaskStatusResponse;
+
+        // Convert string keys to numbers
+        const data = Object.entries(response).reduce<TaskStatusMap>(
+          (acc, [key, value]) => ({
+            ...acc,
+            [parseInt(key)]: value,
+          }),
+          {}
         );
 
-        setTaskResponse(data);
+        setTaskStatuses(data);
 
-        if (data.status === "completed") {
+        // Check if all tasks are completed or failed
+        const allDone = Object.values(data).every(
+          (task: TaskStatus) =>
+            task.status === "completed" || task.status === "failed"
+        );
+
+        if (allDone) {
           setIsLoading(false);
-          toast({
-            title: "Processing completed",
-            description: "Document has been processed successfully.",
-          });
-          onComplete?.();
-        } else if (data.status === "failed") {
-          setIsLoading(false);
-          toast({
-            title: "Processing failed",
-            description: data.error_message || "Something went wrong",
-            variant: "destructive",
-          });
+          const hasErrors = Object.values(data).some(
+            (task: TaskStatus) => task.status === "failed"
+          );
+          if (!hasErrors) {
+            toast({
+              title: "Processing completed",
+              description: "All documents have been processed successfully.",
+            });
+            onComplete?.();
+          } else {
+            toast({
+              title: "Processing completed with errors",
+              description: "Some documents failed to process.",
+              variant: "destructive",
+            });
+          }
         } else {
           // Continue polling
           setTimeout(poll, 2000);
@@ -240,63 +354,82 @@ export function DocumentUploadSteps({
           <Card className="p-6">
             <div className="space-y-4">
               <div
+                {...getRootProps()}
                 className={cn(
-                  "border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors",
-                  file && "border-primary/50 bg-primary/5"
+                  "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
+                  isDragActive
+                    ? "border-primary bg-primary/5"
+                    : "hover:border-primary/50"
                 )}
               >
-                <Input
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  id="file-upload"
-                />
-                <Label
-                  htmlFor="file-upload"
-                  className="flex flex-col items-center gap-2 cursor-pointer"
-                >
-                  {file ? (
-                    <>
-                      <div className="w-12 h-12">
-                        {file.type.toLowerCase().includes("pdf") ? (
-                          <FileIcon extension="pdf" {...defaultStyles.pdf} />
-                        ) : file.type.toLowerCase().includes("doc") ? (
-                          <FileIcon extension="doc" {...defaultStyles.docx} />
-                        ) : file.type.toLowerCase().includes("text") ? (
-                          <FileIcon extension="txt" {...defaultStyles.txt} />
-                        ) : (
-                          <FileIcon
-                            extension=""
-                            color="#E2E8F0"
-                            labelColor="#94A3B8"
-                            labelTextColor="#1E293B"
-                            type="document"
-                          />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{file.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-12 h-12 text-muted-foreground" />
-                      <p className="text-sm font-medium">
-                        Drop your file here or click to browse
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Supports PDF, DOC, DOCX, and TXT files
-                      </p>
-                    </>
-                  )}
-                </Label>
+                <input {...getInputProps()} />
+                <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
+                <p className="mt-2 text-sm font-medium">
+                  Drop your files here or click to browse
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Supports PDF, DOCX, TXT, and MD files
+                </p>
               </div>
-              <Button onClick={handleFileUpload} disabled={!file || isLoading}>
+
+              {files.length > 0 && (
+                <div className="space-y-2">
+                  {files.map((fileStatus) => (
+                    <div
+                      key={fileStatus.file.name}
+                      className="flex items-center justify-between p-4 rounded-lg border"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8">
+                          <FileIcon
+                            extension={fileStatus.file.name.split(".").pop()}
+                            {...defaultStyles[
+                              fileStatus.file.name
+                                .split(".")
+                                .pop() as keyof typeof defaultStyles
+                            ]}
+                          />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {fileStatus.file.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {(fileStatus.file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {fileStatus.status === "uploaded" && (
+                          <span className="text-green-500 text-sm">
+                            Uploaded
+                          </span>
+                        )}
+                        {fileStatus.status === "error" && (
+                          <span className="text-red-500 text-sm">
+                            {fileStatus.error}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => removeFile(fileStatus.file)}
+                          className="p-1 hover:bg-accent rounded-full"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Button
+                onClick={handleFileUpload}
+                disabled={
+                  !files.some((f) => f.status === "pending") || isLoading
+                }
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Upload
+                Upload Files
               </Button>
             </div>
           </Card>
@@ -305,6 +438,32 @@ export function DocumentUploadSteps({
         <TabsContent value="2" className="mt-6">
           <Card className="p-6">
             <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <Label htmlFor="document-select">Select Document</Label>
+                <Select
+                  value={selectedDocumentId?.toString()}
+                  onValueChange={(value: string) =>
+                    setSelectedDocumentId(parseInt(value))
+                  }
+                >
+                  <SelectTrigger className="w-[300px]">
+                    <SelectValue placeholder="Select a document to preview" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {files
+                      .filter((f) => f.status === "uploaded")
+                      .map((f) => (
+                        <SelectItem
+                          key={f.documentId}
+                          value={f.documentId!.toString()}
+                        >
+                          {f.file.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="chunk-size">Chunk Size (tokens)</Label>
@@ -325,25 +484,38 @@ export function DocumentUploadSteps({
                   />
                 </div>
               </div>
-              <Button onClick={handlePreview} disabled={isLoading}>
+
+              <Button
+                onClick={handlePreview}
+                disabled={isLoading || !selectedDocumentId}
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Generate Preview
               </Button>
-              {previewResponse && (
-                <div className="mt-4">
-                  <h3 className="text-lg font-medium mb-2">Preview</h3>
-                  <div className="h-[400px] overflow-y-auto space-y-2">
-                    {previewResponse.chunks.map((chunk, index) => (
-                      <Card key={index} className="p-4">
-                        <pre className="whitespace-pre-wrap text-sm">
-                          {chunk.content}
-                        </pre>
-                      </Card>
-                    ))}
+
+              {selectedDocumentId && uploadedDocuments[selectedDocumentId] && (
+                <div className="space-y-4">
+                  <div className="mt-4">
+                    <h3 className="text-lg font-medium mb-2">
+                      {
+                        files.find((f) => f.documentId === selectedDocumentId)
+                          ?.file.name
+                      }
+                    </h3>
+                    <div className="h-[400px] overflow-y-auto space-y-2">
+                      {uploadedDocuments[selectedDocumentId].chunks.map(
+                        (chunk: PreviewChunk, index: number) => (
+                          <Card key={index} className="p-4">
+                            <pre className="whitespace-pre-wrap text-sm">
+                              {chunk.content}
+                            </pre>
+                          </Card>
+                        )
+                      )}
+                    </div>
                   </div>
-                  <Button className="mt-4" onClick={() => setCurrentStep(3)}>
-                    Continue
-                  </Button>
+
+                  <Button onClick={() => setCurrentStep(3)}>Continue</Button>
                 </div>
               )}
             </div>
@@ -357,25 +529,43 @@ export function DocumentUploadSteps({
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Start Processing
               </Button>
-              {taskResponse && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
-                      Status: {taskResponse.status}
-                    </span>
-                    {(taskResponse.status === "pending" ||
-                      taskResponse.status === "processing") && (
-                      <Progress
-                        value={taskResponse.status === "processing" ? 50 : 25}
-                        className="w-1/2"
-                      />
-                    )}
-                  </div>
-                  {taskResponse.error_message && (
-                    <p className="text-sm text-destructive">
-                      {taskResponse.error_message}
-                    </p>
-                  )}
+
+              {Object.keys(taskStatuses).length > 0 && (
+                <div className="space-y-4">
+                  {files
+                    .filter((f) => f.status === "uploaded")
+                    .map((file) => {
+                      const task = Object.values(taskStatuses).find(
+                        (t) => t.document_id === file.documentId
+                      );
+                      return (
+                        <div
+                          key={file.documentId}
+                          className="flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="text-sm font-medium">
+                              {file.file.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Status: {task?.status || "pending"}
+                            </p>
+                          </div>
+                          {task?.status === "failed" && (
+                            <p className="text-sm text-destructive">
+                              {task.error_message}
+                            </p>
+                          )}
+                          {(task?.status === "pending" ||
+                            task?.status === "processing") && (
+                            <Progress
+                              value={task?.status === "processing" ? 50 : 25}
+                              className="w-1/3"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               )}
             </div>

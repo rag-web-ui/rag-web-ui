@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { api, ApiError } from "@/lib/utils";
+import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 
 interface Chat {
@@ -32,7 +32,7 @@ export default function ChatPage() {
 
   const fetchChats = async () => {
     try {
-      const data = await api.get("http://localhost:8000/api/chat");
+      const data = await api.get<Chat[]>("http://localhost:8000/api/chat");
       setChats(data);
     } catch (error) {
       console.error("Failed to fetch chats:", error);
@@ -50,7 +50,7 @@ export default function ChatPage() {
     if (!confirm("Are you sure you want to delete this chat?")) return;
 
     try {
-      await api.delete(`http://localhost:8000/api/chat/${id}`);
+      await api.delete<void>(`http://localhost:8000/api/chat/${id}`);
       setChats((prev) => prev.filter((chat) => chat.id !== id));
       toast({
         title: "Success",

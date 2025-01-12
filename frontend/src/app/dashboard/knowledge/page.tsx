@@ -5,7 +5,7 @@ import Link from "next/link";
 import { FileIcon, defaultStyles } from "react-file-icon";
 import { ArrowRight, Plus, Settings, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { api, ApiError } from "@/lib/utils";
+import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 
 interface KnowledgeBase {
@@ -38,8 +38,10 @@ export default function KnowledgeBasePage() {
 
   const fetchKnowledgeBases = async () => {
     try {
-      const data = await api.get("http://localhost:8000/api/knowledge-base");
-      setKnowledgeBases(data);
+      const data = await api.get<KnowledgeBase[]>(
+        "http://localhost:8000/api/knowledge-base"
+      );
+      setKnowledgeBases(data as KnowledgeBase[]);
     } catch (error) {
       console.error("Failed to fetch knowledge bases:", error);
       if (error instanceof ApiError) {
@@ -59,7 +61,7 @@ export default function KnowledgeBasePage() {
       return;
 
     try {
-      await api.delete(`http://localhost:8000/api/knowledge-base/${id}`);
+      await api.delete<void>(`http://localhost:8000/api/knowledge-base/${id}`);
       setKnowledgeBases((prev) => prev.filter((kb) => kb.id !== id));
       toast({
         title: "Success",

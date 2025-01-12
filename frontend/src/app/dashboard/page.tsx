@@ -3,7 +3,20 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Book, MessageSquare } from "lucide-react";
-import { api, ApiError } from "@/lib/utils";
+import { api, ApiError } from "@/lib/api";
+
+interface KnowledgeBase {
+  id: number;
+  name: string;
+  description: string;
+  documents: any[];
+}
+
+interface Chat {
+  id: number;
+  title: string;
+  messages: any[];
+}
 
 interface Stats {
   knowledgeBases: number;
@@ -17,8 +30,8 @@ export default function DashboardPage() {
     const fetchStats = async () => {
       try {
         const [kbData, chatData] = await Promise.all([
-          api.get("http://localhost:8000/api/knowledge-base"),
-          api.get("http://localhost:8000/api/chat"),
+          api.get<KnowledgeBase[]>("http://localhost:8000/api/knowledge-base"),
+          api.get<Chat[]>("http://localhost:8000/api/chat"),
         ]);
 
         setStats({
