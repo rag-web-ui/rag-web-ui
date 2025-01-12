@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { api, ApiError } from "@/lib/api";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface Document {
   id: number;
@@ -70,43 +78,43 @@ export function DocumentList({ knowledgeBaseId }: DocumentListProps) {
   }
 
   return (
-    <div className="space-y-4">
-      {documents.map((doc) => (
-        <div
-          key={doc.id}
-          className="flex items-center justify-between p-4 rounded-lg border"
-        >
-          <div>
-            <h3 className="font-medium">{doc.title}</h3>
-            <div className="flex items-center space-x-2 mt-1">
-              <span className="text-sm text-muted-foreground">
-                {(doc.file_size / 1024 / 1024).toFixed(2)} MB
-              </span>
-              <span className="text-muted-foreground">•</span>
-              <span className="text-sm text-muted-foreground">
-                {formatDistanceToNow(new Date(doc.created_at), {
-                  addSuffix: true,
-                })}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            {doc.processing_tasks.length > 0 && (
-              <Badge
-                variant={
-                  doc.processing_tasks[0].status === "completed"
-                    ? "default"
-                    : doc.processing_tasks[0].status === "failed"
-                    ? "destructive"
-                    : "secondary"
-                }
-              >
-                {doc.processing_tasks[0].status}
-              </Badge>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Title</TableHead>
+          <TableHead>Size</TableHead>
+          <TableHead>Created</TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {documents.map((doc) => (
+          <TableRow key={doc.id}>
+            <TableCell className="font-medium">{doc.title}</TableCell>
+            <TableCell>{(doc.file_size / 1024 / 1024).toFixed(2)} MB</TableCell>
+            <TableCell>
+              {formatDistanceToNow(new Date(doc.created_at), {
+                addSuffix: true,
+              })}
+            </TableCell>
+            <TableCell>
+              {doc.processing_tasks.length > 0 && (
+                <Badge
+                  variant={
+                    doc.processing_tasks[0].status === "completed"
+                      ? "secondary" // Green for completed
+                      : doc.processing_tasks[0].status === "failed"
+                      ? "destructive" // Red for failed
+                      : "default" // Default for pending/processing
+                  }
+                >
+                  {doc.processing_tasks[0].status}
+                </Badge>
+              )}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

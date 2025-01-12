@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Upload, X, Settings, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, ApiError } from "@/lib/api";
 import { useDropzone } from "react-dropzone";
@@ -20,6 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface DocumentUploadStepsProps {
   knowledgeBaseId: number;
@@ -313,15 +319,19 @@ export function DocumentUploadSteps({
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="mb-8">
-        <div className="flex justify-between mb-2 px-4">
-          {[1, 2, 3].map((step) => (
+        <div className="flex justify-between mb-2">
+          {[
+            { step: 1, icon: Upload, label: "Upload" },
+            { step: 2, icon: FileText, label: "Preview" },
+            { step: 3, icon: Settings, label: "Process" },
+          ].map(({ step, icon: Icon, label }, index, array) => (
             <div
               key={step}
-              className={cn("flex items-center", step < 3 && "flex-1")}
+              className="flex flex-col items-center space-y-2 flex-1"
             >
               <div
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center border",
+                  "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-colors",
                   currentStep === step
                     ? "bg-primary text-primary-foreground border-primary"
                     : currentStep > step
@@ -329,23 +339,21 @@ export function DocumentUploadSteps({
                     : "bg-background border-input"
                 )}
               >
-                {step}
+                <Icon className="w-6 h-6" />
               </div>
-              {step < 3 && (
+              <span className="text-sm font-medium">
+                {step}. {label}
+              </span>
+              {index < array.length - 1 && (
                 <div
                   className={cn(
-                    "h-1 flex-1 mx-2",
+                    "h-0.5 w-full mt-2",
                     currentStep > step ? "bg-primary/20" : "bg-input"
                   )}
                 />
               )}
             </div>
           ))}
-        </div>
-        <div className="flex justify-between">
-          <span className="text-sm">Upload</span>
-          <span className="text-sm">Preview</span>
-          <span className="text-sm">Process</span>
         </div>
       </div>
 
@@ -427,6 +435,7 @@ export function DocumentUploadSteps({
                 disabled={
                   !files.some((f) => f.status === "pending") || isLoading
                 }
+                className="w-full"
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Upload Files
@@ -437,16 +446,18 @@ export function DocumentUploadSteps({
 
         <TabsContent value="2" className="mt-6">
           <Card className="p-6">
-            <div className="space-y-4">
+            <div className="space-y-6">
+              <h3 className="text-lg font-medium">
+                Select Document to Preview
+              </h3>
               <div className="flex items-center space-x-4">
-                <Label htmlFor="document-select">Select Document</Label>
                 <Select
                   value={selectedDocumentId?.toString()}
                   onValueChange={(value: string) =>
                     setSelectedDocumentId(parseInt(value))
                   }
                 >
-                  <SelectTrigger className="w-[300px]">
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a document to preview" />
                   </SelectTrigger>
                   <SelectContent>
@@ -464,110 +475,166 @@ export function DocumentUploadSteps({
                 </Select>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="chunk-size">Chunk Size (tokens)</Label>
-                  <Input
-                    id="chunk-size"
-                    type="number"
-                    value={chunkSize}
-                    onChange={(e) => setChunkSize(parseInt(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="chunk-overlap">Chunk Overlap (tokens)</Label>
-                  <Input
-                    id="chunk-overlap"
-                    type="number"
-                    value={chunkOverlap}
-                    onChange={(e) => setChunkOverlap(parseInt(e.target.value))}
-                  />
-                </div>
-              </div>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="settings">
+                  <AccordionTrigger>Advanced Settings</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid gap-4 md:grid-cols-2 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="chunk-size">Chunk Size (tokens)</Label>
+                        <Input
+                          id="chunk-size"
+                          type="number"
+                          value={chunkSize}
+                          onChange={(e) =>
+                            setChunkSize(parseInt(e.target.value))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="chunk-overlap">
+                          Chunk Overlap (tokens)
+                        </Label>
+                        <Input
+                          id="chunk-overlap"
+                          type="number"
+                          value={chunkOverlap}
+                          onChange={(e) =>
+                            setChunkOverlap(parseInt(e.target.value))
+                          }
+                        />
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
-              <Button
-                onClick={handlePreview}
-                disabled={isLoading || !selectedDocumentId}
-              >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Generate Preview
-              </Button>
+              <div className="flex space-x-4">
+                <Button
+                  onClick={handlePreview}
+                  disabled={isLoading || !selectedDocumentId}
+                  className="flex-1"
+                >
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Preview Chunks
+                </Button>
+                <Button
+                  onClick={() => setCurrentStep(3)}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  Continue
+                </Button>
+              </div>
 
               {selectedDocumentId && uploadedDocuments[selectedDocumentId] && (
                 <div className="space-y-4">
                   <div className="mt-4">
-                    <h3 className="text-lg font-medium mb-2">
-                      {
-                        files.find((f) => f.documentId === selectedDocumentId)
-                          ?.file.name
-                      }
-                    </h3>
-                    <div className="h-[400px] overflow-y-auto space-y-2">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium">
+                        {
+                          files.find((f) => f.documentId === selectedDocumentId)
+                            ?.file.name
+                        }
+                      </h3>
+                      <span className="text-sm text-muted-foreground">
+                        {uploadedDocuments[selectedDocumentId].chunks.length}{" "}
+                        chunks
+                      </span>
+                    </div>
+                    <div className="h-[400px] overflow-y-auto space-y-2 rounded-lg border p-4">
                       {uploadedDocuments[selectedDocumentId].chunks.map(
                         (chunk: PreviewChunk, index: number) => (
-                          <Card key={index} className="p-4">
+                          <div
+                            key={index}
+                            className="p-4 bg-muted rounded-lg space-y-2"
+                          >
+                            <div className="text-sm text-muted-foreground">
+                              Chunk {index + 1}
+                            </div>
                             <pre className="whitespace-pre-wrap text-sm">
                               {chunk.content}
                             </pre>
-                          </Card>
+                          </div>
                         )
                       )}
                     </div>
                   </div>
-
-                  <Button onClick={() => setCurrentStep(3)}>Continue</Button>
                 </div>
               )}
             </div>
           </Card>
         </TabsContent>
-
         <TabsContent value="3" className="mt-6">
           <Card className="p-6">
             <div className="space-y-4">
-              <Button onClick={handleProcess} disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Start Processing
-              </Button>
-
-              {Object.keys(taskStatuses).length > 0 && (
-                <div className="space-y-4">
-                  {files
-                    .filter((f) => f.status === "uploaded")
-                    .map((file) => {
-                      const task = Object.values(taskStatuses).find(
-                        (t) => t.document_id === file.documentId
-                      );
-                      return (
-                        <div
-                          key={file.documentId}
-                          className="flex items-center justify-between"
-                        >
-                          <div>
-                            <p className="text-sm font-medium">
-                              {file.file.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Status: {task?.status || "pending"}
-                            </p>
+              <div className="max-h-[300px] overflow-y-auto space-y-2 rounded-lg border p-4">
+                {files
+                  .filter((f) => f.status === "uploaded")
+                  .map((file) => {
+                    const task = Object.values(taskStatuses).find(
+                      (t) => t.document_id === file.documentId
+                    );
+                    return (
+                      <div
+                        key={file.documentId}
+                        className="p-4 border rounded-lg space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-8 h-8">
+                              <FileIcon
+                                extension={file.file.name.split(".").pop()}
+                                {...defaultStyles[
+                                  file.file.name
+                                    .split(".")
+                                    .pop() as keyof typeof defaultStyles
+                                ]}
+                              />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">
+                                {file.file.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {(file.file.size / 1024 / 1024).toFixed(2)} MB
+                              </p>
+                              {task && (
+                                <p className="text-xs text-muted-foreground">
+                                  Status: {task.status || "pending"}
+                                </p>
+                              )}
+                            </div>
                           </div>
                           {task?.status === "failed" && (
                             <p className="text-sm text-destructive">
                               {task.error_message}
                             </p>
                           )}
-                          {(task?.status === "pending" ||
-                            task?.status === "processing") && (
+                        </div>
+                        {task &&
+                          (task.status === "pending" ||
+                            task.status === "processing") && (
                             <Progress
-                              value={task?.status === "processing" ? 50 : 25}
-                              className="w-1/3"
+                              value={task.status === "processing" ? 50 : 25}
+                              className="w-full"
                             />
                           )}
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <Button
+                onClick={handleProcess}
+                disabled={isLoading}
+                className="w-full"
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Start Processing
+              </Button>
             </div>
           </Card>
         </TabsContent>

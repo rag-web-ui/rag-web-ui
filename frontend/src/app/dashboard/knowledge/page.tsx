@@ -159,9 +159,11 @@ export default function KnowledgeBasePage() {
                             />
                           )}
                         </div>
-                        <span className="text-sm font-medium text-center line-clamp-3">
-                          {doc.title}
-                        </span>
+                        <div className="text-sm font-medium text-center max-w-[100px]">
+                          <div className="line-clamp-2 overflow-hidden text-ellipsis">
+                            {doc.title}
+                          </div>
+                        </div>
                         <span className="text-xs text-muted-foreground mt-1">
                           {new Date(doc.created_at).toLocaleDateString()}
                         </span>
