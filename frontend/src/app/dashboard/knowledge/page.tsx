@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Upload } from "lucide-react";
+import { FileIcon, defaultStyles } from "react-file-icon";
+import { ArrowRight, Plus, Settings, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 
 interface KnowledgeBase {
@@ -12,13 +13,16 @@ interface KnowledgeBase {
   documents: Document[];
   created_at: string;
 }
-
 interface Document {
   id: number;
   title: string;
-  content: string;
   file_path: string;
+  file_size: number;
+  content_type: string;
+  knowledge_base_id: number;
   created_at: string;
+  updated_at: string;
+  processing_tasks: any[];
 }
 
 export default function KnowledgeBasePage() {
@@ -107,11 +111,11 @@ export default function KnowledgeBasePage() {
                 </div>
                 <div className="flex space-x-2">
                   <Link
-                    href={`/dashboard/knowledge/${kb.id}/upload`}
+                    href={`/dashboard/knowledge/${kb.id}`}
                     className="inline-flex items-center justify-center rounded-md bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
                   >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload
+                    <Settings className="mr-2 h-4 w-4" />
+                    Manage
                   </Link>
                   <button
                     onClick={() => handleDelete(kb.id)}
@@ -126,18 +130,51 @@ export default function KnowledgeBasePage() {
               {kb.documents.length > 0 && (
                 <div className="border-t pt-4">
                   <h4 className="text-sm font-medium mb-2">Documents</h4>
-                  <div className="space-y-2">
-                    {kb.documents.map((doc) => (
+                  <div className="flex flex-wrap gap-2">
+                    {kb.documents.slice(0, 9).map((doc) => (
                       <div
                         key={doc.id}
-                        className="flex justify-between items-center rounded-md bg-accent/50 p-2 text-sm"
+                        className="flex flex-col items-center gap-2 p-2 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors w-[150px] h-[150px] justify-center"
                       >
-                        <span>{doc.title}</span>
-                        <span className="text-muted-foreground">
+                        <div className="w-8 h-8 mb-2">
+                          {doc.content_type.toLowerCase().includes("pdf") ? (
+                            <FileIcon extension="pdf" {...defaultStyles.pdf} />
+                          ) : doc.content_type.toLowerCase().includes("doc") ? (
+                            <FileIcon extension="doc" {...defaultStyles.docx} />
+                          ) : doc.content_type.toLowerCase().includes("txt") ? (
+                            <FileIcon extension="txt" {...defaultStyles.txt} />
+                          ) : (
+                            <FileIcon
+                              extension=""
+                              color="#E2E8F0"
+                              labelColor="#94A3B8"
+                            />
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-center line-clamp-3">
+                          {doc.title}
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-1">
                           {new Date(doc.created_at).toLocaleDateString()}
                         </span>
                       </div>
                     ))}
+                    {kb.documents.length > 9 && (
+                      <Link
+                        href={`/dashboard/knowledge/${kb.id}`}
+                        className="flex flex-col items-center p-2 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors w-[150px] h-[150px] justify-center"
+                      >
+                        <div className="w-8 h-8 mb-2 flex items-center justify-center">
+                          <ArrowRight className="w-6 h-6" />
+                        </div>
+                        <span className="text-sm font-medium text-center">
+                          View All Documents
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-1">
+                          {kb.documents.length} total
+                        </span>
+                      </Link>
+                    )}
                   </div>
                 </div>
               )}

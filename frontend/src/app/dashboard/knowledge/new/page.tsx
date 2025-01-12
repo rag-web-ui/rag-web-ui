@@ -38,7 +38,7 @@ export default function NewKnowledgeBasePage() {
       }
 
       const data = await response.json();
-      router.push(`/dashboard/knowledge/${data.id}/upload`);
+      router.push(`/dashboard/knowledge/${data.id}`);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to create knowledge base"

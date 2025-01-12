@@ -2,6 +2,18 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
+class ProcessingTaskResponse(BaseModel):
+    id: int
+    status: str
+    error_message: Optional[str] = None
+    document_id: int
+    knowledge_base_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class DocumentBase(BaseModel):
     title: str
     file_path: Optional[str] = None
@@ -16,6 +28,7 @@ class DocumentResponse(DocumentBase):
     knowledge_base_id: int
     created_at: datetime
     updated_at: datetime
+    processing_tasks: List[ProcessingTaskResponse] = []
 
     class Config:
         from_attributes = True

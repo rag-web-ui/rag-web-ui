@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, List, Dict
 from io import BytesIO
 import tempfile
 from fastapi import UploadFile
@@ -10,21 +10,31 @@ from langchain_community.document_loaders import (
     TextLoader
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document as LangchainDocument
 from pydantic import BaseModel
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 from app.core.config import settings
 from app.core.minio import get_minio_client
+import logging
+from sqlalchemy.orm import Session
+from app.models.knowledge import ProcessingTask
 
-class ProcessedDocument(BaseModel):
-    title: str
-    content: str
-    file_path: Optional[str] = None
+class UploadResult(BaseModel):
+    file_path: str
     file_size: int
     content_type: str
 
-async def process_document(file: UploadFile, kb_id: int) -> ProcessedDocument:
-    # Read file content
+class TextChunk(BaseModel):
+    content: str
+    metadata: Dict
+
+class PreviewResult(BaseModel):
+    chunks: List[TextChunk]
+    total_chunks: int
+
+async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
+    """Step 1: Upload document to MinIO"""
     content = await file.read()
     file_size = len(content)
     
@@ -52,9 +62,26 @@ async def process_document(file: UploadFile, kb_id: int) -> ProcessedDocument:
         content_type=content_type
     )
     
-    # Create a temporary file for document processing
+    return UploadResult(
+        file_path=object_path,
+        file_size=file_size,
+        content_type=content_type
+    )
+
+async def preview_document(file_path: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> PreviewResult:
+    """Step 2: Generate preview chunks"""
+    # Get file from MinIO
+    minio_client = get_minio_client()
+    _, ext = os.path.splitext(file_path)
+    ext = ext.lower()
+    
+    # Download to temp file
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp_file:
-        temp_file.write(content)
+        minio_client.fget_object(
+            bucket_name=settings.MINIO_BUCKET_NAME,
+            object_name=file_path,
+            file_path=temp_file.name
+        )
         temp_path = temp_file.name
     
     try:
@@ -71,37 +98,117 @@ async def process_document(file: UploadFile, kb_id: int) -> ProcessedDocument:
         # Load and split the document
         documents = loader.load()
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
         )
         chunks = text_splitter.split_documents(documents)
         
+        # Convert to preview format
+        preview_chunks = [
+            TextChunk(
+                content=chunk.page_content,
+                metadata=chunk.metadata
+            )
+            for chunk in chunks
+        ]
+        
+        return PreviewResult(
+            chunks=preview_chunks,
+            total_chunks=len(chunks)
+        )
+    finally:
+        os.unlink(temp_path)
+
+async def process_document(file_path: str, kb_id: int, chunk_size: int = 1000, chunk_overlap: int = 200) -> None:
+    """Step 3: Process document and store in vector database"""
+    logger = logging.getLogger(__name__)
+    
+    try:
+        preview_result = await preview_document(file_path, chunk_size, chunk_overlap)
+        
         # Initialize embeddings
+        logger.info("Initializing OpenAI embeddings...")
         embeddings = OpenAIEmbeddings(
             openai_api_key=settings.OPENAI_API_KEY,
             openai_api_base=settings.OPENAI_API_BASE
         )
         
+        # Ensure ChromaDB directory exists
+        persist_directory = "./chroma_db"
+        os.makedirs(persist_directory, exist_ok=True)
+        logger.info(f"ChromaDB directory ensured: {persist_directory}")
+        
         # Store document chunks in ChromaDB
+        logger.info(f"Initializing ChromaDB with collection: kb_{kb_id}")
         vector_store = Chroma(
             collection_name=f"kb_{kb_id}",
             embedding_function=embeddings,
-            persist_directory="./chroma_db"
+            persist_directory=persist_directory
         )
+        
+        documents = [
+            LangchainDocument(
+                page_content=chunk.content,
+                metadata=chunk.metadata
+            )
+            for chunk in preview_result.chunks
+        ]
         
         # Add documents to vector store
-        vector_store.add_documents(chunks)
+        logger.info(f"Adding {len(documents)} documents to vector store")
+        vector_store.add_documents(documents)
+        logger.info("Documents successfully added to vector store")
         
-        # Combine all chunks into a single text for the database record
-        combined_text = "\n\n".join([chunk.page_content for chunk in chunks])
+    except Exception as e:
+        logger.error(f"Error in process_document: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise 
+
+async def process_document_background(
+    file_path: str,
+    kb_id: int,
+    task_id: int,
+    db: Session,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 200
+):
+    """Background task for processing document"""
+    try:
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
         
-        return ProcessedDocument(
-            title=file.filename,
-            content=combined_text,
-            file_path=object_path,
-            file_size=file_size,
-            content_type=content_type
-        )
+        logger.info(f"Starting document processing for file: {file_path}, kb_id: {kb_id}, task_id: {task_id}")
+        
+        from app.models.knowledge import ProcessingTask
+        
+        # Process document
+        logger.info("Calling process_document...")
+        await process_document(file_path, kb_id, chunk_size, chunk_overlap)
+        logger.info("Document processing completed successfully")
+        
+        # Update task status
+        logger.info("Updating task status to completed")
+        task = db.query(ProcessingTask).filter(ProcessingTask.id == task_id).first()
+        if task:
+            task.status = "completed"
+            db.commit()
+            logger.info(f"Task {task_id} marked as completed")
+            
+    except Exception as e:
+        import traceback
+        logger.error(f"Error processing document: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        # Update task status with error
+        task = db.query(ProcessingTask).filter(ProcessingTask.id == task_id).first()
+        if task:
+            task.status = "failed"
+            task.error_message = f"{str(e)}\n{traceback.format_exc()}"
+            db.commit()
+            logger.error(f"Task {task_id} marked as failed")
+        raise e
     finally:
-        # Clean up temporary file
-        os.unlink(temp_path) 
+        logger.info("Closing database connection")
+        db.close() 
