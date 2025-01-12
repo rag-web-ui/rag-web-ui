@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { api, ApiError } from "@/lib/utils";
 
 interface Document {
   id: number;
@@ -37,20 +38,16 @@ export function DocumentList({ knowledgeBaseId }: DocumentListProps) {
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(
-          `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const data = await api.get(
+          `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}`
         );
-        if (!response.ok) throw new Error("Failed to fetch documents");
-        const data = await response.json();
         setDocuments(data.documents || []);
       } catch (error) {
         console.error("Error fetching documents:", error);
+        if (error instanceof ApiError && error.status === 401) {
+          // The utility will handle the redirect
+          return;
+        }
       } finally {
         setIsLoading(false);
       }

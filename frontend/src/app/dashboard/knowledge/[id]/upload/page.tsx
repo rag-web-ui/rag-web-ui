@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { Upload, X, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { api, ApiError } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 interface FileStatus {
   file: File;
@@ -15,6 +17,7 @@ interface FileStatus {
 export default function UploadPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [files, setFiles] = useState<FileStatus[]>([]);
+  const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles((prev) => [
@@ -42,40 +45,45 @@ export default function UploadPage({ params }: { params: { id: string } }) {
     formData.append("file", fileStatus.file);
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
+      await api.post(
         `http://localhost:8000/api/knowledge-base/${params.id}/upload`,
+        formData,
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
+          // Don't set Content-Type header, let the browser set it with the boundary
+          headers: {},
         }
       );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || "Upload failed");
-      }
 
       setFiles((prev) =>
         prev.map((f) =>
           f.file === fileStatus.file ? { ...f, status: "success" } : f
         )
       );
+
+      toast({
+        title: "Success",
+        description: `${fileStatus.file.name} uploaded successfully`,
+      });
     } catch (error) {
+      const errorMessage =
+        error instanceof ApiError ? error.message : "Upload failed";
       setFiles((prev) =>
         prev.map((f) =>
           f.file === fileStatus.file
             ? {
                 ...f,
                 status: "error",
-                error: error instanceof Error ? error.message : "Upload failed",
+                error: errorMessage,
               }
             : f
         )
       );
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
   };
 

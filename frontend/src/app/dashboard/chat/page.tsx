@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { api, ApiError } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Chat {
   id: number;
@@ -22,6 +24,7 @@ interface Message {
 
 export default function ChatPage() {
   const [chats, setChats] = useState<Chat[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchChats();
@@ -29,16 +32,17 @@ export default function ChatPage() {
 
   const fetchChats = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8000/api/chat", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
+      const data = await api.get("http://localhost:8000/api/chat");
       setChats(data);
     } catch (error) {
       console.error("Failed to fetch chats:", error);
+      if (error instanceof ApiError) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -46,19 +50,21 @@ export default function ChatPage() {
     if (!confirm("Are you sure you want to delete this chat?")) return;
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:8000/api/chat/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      await api.delete(`http://localhost:8000/api/chat/${id}`);
+      setChats((prev) => prev.filter((chat) => chat.id !== id));
+      toast({
+        title: "Success",
+        description: "Chat deleted successfully",
       });
-
-      if (response.ok) {
-        setChats((prev) => prev.filter((chat) => chat.id !== id));
-      }
     } catch (error) {
       console.error("Failed to delete chat:", error);
+      if (error instanceof ApiError) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   };
 

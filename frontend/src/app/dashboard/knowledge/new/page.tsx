@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { api, ApiError } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function NewKnowledgeBasePage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -19,30 +22,24 @@ export default function NewKnowledgeBasePage() {
       const name = formData.get("name");
       const description = formData.get("description");
 
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8000/api/knowledge-base", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name,
-          description,
-        }),
+      const data = await api.post("http://localhost:8000/api/knowledge-base", {
+        name,
+        description,
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || "Failed to create knowledge base");
-      }
-
-      const data = await response.json();
       router.push(`/dashboard/knowledge/${data.id}`);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to create knowledge base"
-      );
+    } catch (error) {
+      console.error("Failed to create knowledge base:", error);
+      if (error instanceof ApiError) {
+        setError(error.message);
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        setError("Failed to create knowledge base");
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { api, ApiError } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 interface KnowledgeBase {
   id: number;
@@ -17,6 +19,7 @@ export default function NewChatPage() {
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchKnowledgeBases();
@@ -24,16 +27,17 @@ export default function NewChatPage() {
 
   const fetchKnowledgeBases = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8000/api/knowledge-base", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
+      const data = await api.get("http://localhost:8000/api/knowledge-base");
       setKnowledgeBases(data);
     } catch (error) {
       console.error("Failed to fetch knowledge bases:", error);
+      if (error instanceof ApiError) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -48,28 +52,24 @@ export default function NewChatPage() {
     setIsSubmitting(true);
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8000/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title,
-          knowledge_base_ids: selectedKBs,
-        }),
+      const data = await api.post("http://localhost:8000/api/chat", {
+        title,
+        knowledge_base_ids: selectedKBs,
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || "Failed to create chat");
-      }
-
-      const data = await response.json();
       router.push(`/dashboard/chat/${data.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create chat");
+    } catch (error) {
+      console.error("Failed to create chat:", error);
+      if (error instanceof ApiError) {
+        setError(error.message);
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        setError("Failed to create chat");
+      }
     } finally {
       setIsSubmitting(false);
     }

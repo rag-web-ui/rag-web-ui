@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Upload } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, api, ApiError } from "@/lib/utils";
 
 interface DocumentUploadStepsProps {
   knowledgeBaseId: number;
@@ -64,21 +64,15 @@ export function DocumentUploadSteps({
     formData.append("file", file);
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
+      const data = await api.post(
         `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/document/upload`,
+        formData,
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
+          // Don't set Content-Type header, let the browser set it with the boundary
+          headers: {},
         }
       );
 
-      if (!response.ok) throw new Error("Upload failed");
-
-      const data = await response.json();
       setUploadResponse(data);
       setCurrentStep(2);
       toast({
@@ -89,7 +83,7 @@ export function DocumentUploadSteps({
       toast({
         title: "Upload failed",
         description:
-          error instanceof Error ? error.message : "Something went wrong",
+          error instanceof ApiError ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -103,26 +97,14 @@ export function DocumentUploadSteps({
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(
+      const data = await api.post(
         `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/document/${uploadResponse.document_id}/preview`,
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            chunk_size: chunkSize,
-            chunk_overlap: chunkOverlap,
-          }),
+          chunk_size: chunkSize,
+          chunk_overlap: chunkOverlap,
         }
       );
 
-      if (!response.ok) throw new Error("Preview failed");
-
-      const data = await response.json();
       setPreviewResponse(data);
       toast({
         title: "Preview generated",
@@ -132,7 +114,7 @@ export function DocumentUploadSteps({
       toast({
         title: "Preview failed",
         description:
-          error instanceof Error ? error.message : "Something went wrong",
+          error instanceof ApiError ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -146,31 +128,21 @@ export function DocumentUploadSteps({
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
+      const data = await api.post(
         `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/document/${uploadResponse.document_id}/process?` +
           new URLSearchParams({
             chunk_size: chunkSize.toString(),
             chunk_overlap: chunkOverlap.toString(),
-          }),
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+          })
       );
 
-      if (!response.ok) throw new Error("Processing failed");
-
-      const data = await response.json();
       setTaskResponse(data);
       pollTaskStatus(data.task_id);
     } catch (error) {
       toast({
         title: "Processing failed",
         description:
-          error instanceof Error ? error.message : "Something went wrong",
+          error instanceof ApiError ? error.message : "Something went wrong",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -183,19 +155,10 @@ export function DocumentUploadSteps({
 
     const poll = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(
-          `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/document/${uploadResponse.document_id}/task/${taskId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const data = await api.get(
+          `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/document/${uploadResponse.document_id}/task/${taskId}`
         );
 
-        if (!response.ok) throw new Error("Failed to get task status");
-
-        const data = await response.json();
         setTaskResponse(data);
 
         if (data.status === "completed") {
@@ -221,7 +184,7 @@ export function DocumentUploadSteps({
         toast({
           title: "Status check failed",
           description:
-            error instanceof Error ? error.message : "Something went wrong",
+            error instanceof ApiError ? error.message : "Something went wrong",
           variant: "destructive",
         });
       }

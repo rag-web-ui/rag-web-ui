@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Book, MessageSquare } from "lucide-react";
+import { api, ApiError } from "@/lib/utils";
 
 interface Stats {
   knowledgeBases: number;
@@ -15,23 +16,9 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const [kbResponse, chatResponse] = await Promise.all([
-          fetch("http://localhost:8000/api/knowledge-base", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetch("http://localhost:8000/api/chat", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-        ]);
-
         const [kbData, chatData] = await Promise.all([
-          kbResponse.json(),
-          chatResponse.json(),
+          api.get("http://localhost:8000/api/knowledge-base"),
+          api.get("http://localhost:8000/api/chat"),
         ]);
 
         setStats({
@@ -40,6 +27,10 @@ export default function DashboardPage() {
         });
       } catch (error) {
         console.error("Failed to fetch stats:", error);
+        if (error instanceof ApiError && error.status === 401) {
+          // The utility will handle the redirect
+          return;
+        }
       }
     };
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { api, ApiError } from "@/lib/utils";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -87,26 +88,19 @@ export default function RegisterPage() {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username,
-          email,
-          password,
-        }),
+      await api.post("http://localhost:8000/api/auth/register", {
+        username,
+        email,
+        password,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || "Registration failed");
-      }
 
       router.push("/login");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Registration failed");
+      }
     }
   };
 

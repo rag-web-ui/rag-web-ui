@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useChat } from "ai/react";
 import { Send } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { api, ApiError } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Message {
   id: string;
@@ -28,6 +30,7 @@ interface Chat {
 export default function ChatPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const {
     messages,
@@ -44,10 +47,6 @@ export default function ChatPage({ params }: { params: { id: string } }) {
     initialMessages: [],
   });
 
-  console.log(JSON.stringify(messages));
-  console.log(input);
-  console.log(isLoading);
-
   useEffect(() => {
     fetchChat();
   }, []);
@@ -58,21 +57,9 @@ export default function ChatPage({ params }: { params: { id: string } }) {
 
   const fetchChat = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:8000/api/chat/${params.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const data: Chat = await api.get(
+        `http://localhost:8000/api/chat/${params.id}`
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch chat");
-      }
-
-      const data: Chat = await response.json();
       // Convert existing messages to the format expected by useChat
       const formattedMessages = data.messages.map((msg) => ({
         id: msg.id.toString(),
@@ -83,6 +70,13 @@ export default function ChatPage({ params }: { params: { id: string } }) {
       setMessages(formattedMessages);
     } catch (error) {
       console.error("Failed to fetch chat:", error);
+      if (error instanceof ApiError) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
       router.push("/dashboard/chat");
     }
   };

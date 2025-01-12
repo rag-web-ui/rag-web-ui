@@ -5,6 +5,8 @@ import Link from "next/link";
 import { FileIcon, defaultStyles } from "react-file-icon";
 import { ArrowRight, Plus, Settings, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { api, ApiError } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 interface KnowledgeBase {
   id: number;
@@ -27,6 +29,8 @@ interface Document {
 
 export default function KnowledgeBasePage() {
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchKnowledgeBases();
@@ -34,16 +38,19 @@ export default function KnowledgeBasePage() {
 
   const fetchKnowledgeBases = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8000/api/knowledge-base", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
+      const data = await api.get("http://localhost:8000/api/knowledge-base");
       setKnowledgeBases(data);
     } catch (error) {
       console.error("Failed to fetch knowledge bases:", error);
+      if (error instanceof ApiError) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,22 +59,21 @@ export default function KnowledgeBasePage() {
       return;
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:8000/api/knowledge-base/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        setKnowledgeBases((prev) => prev.filter((kb) => kb.id !== id));
-      }
+      await api.delete(`http://localhost:8000/api/knowledge-base/${id}`);
+      setKnowledgeBases((prev) => prev.filter((kb) => kb.id !== id));
+      toast({
+        title: "Success",
+        description: "Knowledge base deleted successfully",
+      });
     } catch (error) {
       console.error("Failed to delete knowledge base:", error);
+      if (error instanceof ApiError) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -181,11 +187,22 @@ export default function KnowledgeBasePage() {
             </div>
           ))}
 
-          {knowledgeBases.length === 0 && (
+          {!loading && knowledgeBases.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
                 No knowledge bases found. Create one to get started.
               </p>
+            </div>
+          )}
+
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="space-y-4">
+                <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto"></div>
+                <p className="text-muted-foreground animate-pulse">
+                  Loading knowledge bases...
+                </p>
+              </div>
             </div>
           )}
         </div>

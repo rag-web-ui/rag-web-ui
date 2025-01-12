@@ -2,6 +2,7 @@ import os
 from typing import Optional, List, Dict
 from io import BytesIO
 import tempfile
+import traceback
 from fastapi import UploadFile
 from langchain_community.document_loaders import (
     PyPDFLoader,
@@ -161,7 +162,6 @@ async def process_document(file_path: str, kb_id: int, chunk_size: int = 1000, c
         
     except Exception as e:
         logger.error(f"Error in process_document: {str(e)}")
-        import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         raise 
 
