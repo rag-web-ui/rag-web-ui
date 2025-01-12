@@ -146,3 +146,13 @@ alembic upgrade head
 - 使用 Tailwind CSS 进行样式开发
 - 状态管理使用 React Hooks
 
+
+### 文档处理
+- 文档处理使用 Langchain 框架
+- 文档处理使用 ChromaDB 向量数据库
+- 文档处理使用 MinIO 对象存储
+
+### 优化
+- 文档增量 chunk 处理，增加 langchain recorder 
+- 文档 preview 异步处理
+- 多文档预览
