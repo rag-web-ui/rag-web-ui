@@ -3,8 +3,9 @@ import os
 import hashlib
 import tempfile
 import traceback
+from datetime import datetime
 from io import BytesIO
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Set
 from fastapi import UploadFile
 from langchain_community.document_loaders import (
     PyPDFLoader,
@@ -17,10 +18,12 @@ from langchain_core.documents import Document as LangchainDocument
 from pydantic import BaseModel
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.minio import get_minio_client
 from app.models.knowledge import ProcessingTask
+from app.services.chunk_record import ChunkRecord
 
 class UploadResult(BaseModel):
     file_path: str
@@ -30,11 +33,106 @@ class UploadResult(BaseModel):
 
 class TextChunk(BaseModel):
     content: str
-    metadata: Dict
+    metadata: Optional[Dict] = None
 
 class PreviewResult(BaseModel):
     chunks: List[TextChunk]
     total_chunks: int
+
+async def process_document(file_path: str, kb_id: int, chunk_size: int = 1000, chunk_overlap: int = 200) -> None:
+    """Process document and store in vector database with incremental updates"""
+    logger = logging.getLogger(__name__)
+    
+    try:
+        preview_result = await preview_document(file_path, chunk_size, chunk_overlap)
+        
+        # Initialize embeddings
+        logger.info("Initializing OpenAI embeddings...")
+        embeddings = OpenAIEmbeddings(
+            openai_api_key=settings.OPENAI_API_KEY,
+            openai_api_base=settings.OPENAI_API_BASE
+        )
+        
+        # Ensure ChromaDB directory exists
+        persist_directory = "./chroma_db"
+        os.makedirs(persist_directory, exist_ok=True)
+        logger.info(f"ChromaDB directory ensured: {persist_directory}")
+        
+        # Initialize vector store
+        logger.info(f"Initializing ChromaDB with collection: kb_{kb_id}")
+        vector_store = Chroma(
+            collection_name=f"kb_{kb_id}",
+            embedding_function=embeddings,
+            persist_directory=persist_directory
+        )
+        
+        # Initialize chunk record manager
+        chunk_manager = ChunkRecord(kb_id)
+        
+        # Get existing chunk hashes for this file
+        existing_hashes = chunk_manager.list_chunks(file_path)
+        
+        # Prepare new chunks
+        new_chunks = []
+        current_hashes = set()
+        documents_to_update = []
+        
+        for chunk in preview_result.chunks:
+            # Calculate chunk hash
+            chunk_hash = hashlib.sha256(
+                (chunk.content + str(chunk.metadata)).encode()
+            ).hexdigest()
+            current_hashes.add(chunk_hash)
+            
+            # Skip if chunk hasn't changed
+            if chunk_hash in existing_hashes:
+                continue
+            
+            # Create unique ID for the chunk
+            chunk_id = hashlib.sha256(
+                f"{kb_id}:{file_path}:{chunk_hash}".encode()
+            ).hexdigest()
+            
+            # Prepare chunk record
+            new_chunks.append({
+                "id": chunk_id,
+                "kb_id": kb_id,
+                "file_path": file_path,
+                "metadata": chunk.metadata,
+                "hash": chunk_hash
+            })
+            
+            # Prepare document for vector store
+            doc = LangchainDocument(
+                page_content=chunk.content,
+                metadata={
+                    **chunk.metadata,
+                    "chunk_id": chunk_id,
+                    "file_path": file_path,
+                    "kb_id": kb_id
+                }
+            )
+            documents_to_update.append(doc)
+        
+        # Add new chunks to database and vector store
+        if new_chunks:
+            logger.info(f"Adding {len(new_chunks)} new/updated chunks")
+            chunk_manager.add_chunks(new_chunks)
+            vector_store.add_documents(documents_to_update)
+        
+        # Delete removed chunks
+        chunks_to_delete = chunk_manager.get_deleted_chunks(current_hashes, file_path)
+        if chunks_to_delete:
+            logger.info(f"Removing {len(chunks_to_delete)} deleted chunks")
+            chunk_manager.delete_chunks(chunks_to_delete)
+            vector_store.delete(chunks_to_delete)
+        
+        logger.info("Document processing completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Error in process_document: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise
 
 async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
     """Step 1: Upload document to MinIO"""
@@ -126,51 +224,6 @@ async def preview_document(file_path: str, chunk_size: int = 1000, chunk_overlap
         )
     finally:
         os.unlink(temp_path)
-
-async def process_document(file_path: str, kb_id: int, chunk_size: int = 1000, chunk_overlap: int = 200) -> None:
-    """Step 3: Process document and store in vector database"""
-    logger = logging.getLogger(__name__)
-    
-    try:
-        preview_result = await preview_document(file_path, chunk_size, chunk_overlap)
-        
-        # Initialize embeddings
-        logger.info("Initializing OpenAI embeddings...")
-        embeddings = OpenAIEmbeddings(
-            openai_api_key=settings.OPENAI_API_KEY,
-            openai_api_base=settings.OPENAI_API_BASE
-        )
-        
-        # Ensure ChromaDB directory exists
-        persist_directory = "./chroma_db"
-        os.makedirs(persist_directory, exist_ok=True)
-        logger.info(f"ChromaDB directory ensured: {persist_directory}")
-        
-        # Store document chunks in ChromaDB
-        logger.info(f"Initializing ChromaDB with collection: kb_{kb_id}")
-        vector_store = Chroma(
-            collection_name=f"kb_{kb_id}",
-            embedding_function=embeddings,
-            persist_directory=persist_directory
-        )
-        
-        documents = [
-            LangchainDocument(
-                page_content=chunk.content,
-                metadata=chunk.metadata
-            )
-            for chunk in preview_result.chunks
-        ]
-        
-        # Add documents to vector store
-        logger.info(f"Adding {len(documents)} documents to vector store")
-        vector_store.add_documents(documents)
-        logger.info("Documents successfully added to vector store")
-        
-    except Exception as e:
-        logger.error(f"Error in process_document: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise 
 
 async def process_document_background(
     file_path: str,
