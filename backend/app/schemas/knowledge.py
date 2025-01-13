@@ -15,10 +15,11 @@ class ProcessingTaskResponse(BaseModel):
         from_attributes = True
 
 class DocumentBase(BaseModel):
-    title: str
     file_path: Optional[str] = None
+    file_name: str
     file_size: Optional[int] = None
     content_type: Optional[str] = None
+    file_hash: Optional[str] = None
 
 class DocumentCreate(DocumentBase):
     knowledge_base_id: int

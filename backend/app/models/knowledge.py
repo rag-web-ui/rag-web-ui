@@ -3,6 +3,7 @@ from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import relationship
 from app.models.base import Base, TimestampMixin
 from datetime import datetime
+import sqlalchemy as sa
 
 class KnowledgeBase(Base, TimestampMixin):
     __tablename__ = "knowledge_bases"
@@ -21,8 +22,8 @@ class Document(Base, TimestampMixin):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
     file_path = Column(String(255), nullable=False)  # Path in MinIO
+    file_name = Column(String(255), nullable=False)  # Actual file name
     file_size = Column(Integer)  # File size in bytes
     content_type = Column(String(100))  # MIME type
     file_hash = Column(String(64), index=True)  # SHA-256 hash of file content
@@ -31,6 +32,11 @@ class Document(Base, TimestampMixin):
     # Relationships
     knowledge_base = relationship("KnowledgeBase", back_populates="documents") 
     processing_tasks = relationship("ProcessingTask", back_populates="document")
+
+    __table_args__ = (
+        # Ensure file_name is unique within each knowledge base
+        sa.UniqueConstraint('knowledge_base_id', 'file_name', name='uq_kb_file_name'),
+    )
 
 class ProcessingTask(Base):
     __tablename__ = "processing_tasks"

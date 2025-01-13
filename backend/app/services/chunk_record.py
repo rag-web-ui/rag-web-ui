@@ -9,7 +9,7 @@ class ChunkRecord:
         self.kb_id = kb_id
         self.engine = create_engine(settings.get_database_url)
     
-    def list_chunks(self, file_path: Optional[str] = None) -> Set[str]:
+    def list_chunks(self, file_name: Optional[str] = None) -> Set[str]:
         """List all chunk hashes for the given file"""
         query = """
         SELECT hash FROM document_chunks 
@@ -17,9 +17,9 @@ class ChunkRecord:
         """
         params = {"kb_id": self.kb_id}
         
-        if file_path:
-            query += " AND file_path = :file_path"
-            params["file_path"] = file_path
+        if file_name:
+            query += " AND file_name = :file_name"
+            params["file_name"] = file_name
             
         with self.engine.connect() as conn:
             result = conn.execute(text(query), params)
@@ -39,8 +39,8 @@ class ChunkRecord:
             prepared_chunks.append(prepared_chunk)
             
         insert_sql = """
-        INSERT INTO document_chunks (id, kb_id, file_path, metadata, hash)
-        VALUES (:id, :kb_id, :file_path, :metadata, :hash)
+        INSERT INTO document_chunks (id, kb_id, file_name, metadata, hash)
+        VALUES (:id, :kb_id, :file_name, :metadata, :hash)
         ON DUPLICATE KEY UPDATE
             metadata = VALUES(metadata),
             updated_at = CURRENT_TIMESTAMP
@@ -70,7 +70,7 @@ class ChunkRecord:
             conn.execute(text(delete_sql), {"kb_id": self.kb_id})
             conn.commit()
     
-    def get_deleted_chunks(self, current_hashes: Set[str], file_path: Optional[str] = None) -> List[str]:
+    def get_deleted_chunks(self, current_hashes: Set[str], file_name: Optional[str] = None) -> List[str]:
         """Get IDs of chunks that no longer exist in the current version"""
         if not current_hashes:
             # If no current hashes, return all chunk IDs for the file
@@ -80,9 +80,9 @@ class ChunkRecord:
             """
             params = {"kb_id": self.kb_id}
             
-            if file_path:
-                query += " AND file_path = :file_path"
-                params["file_path"] = file_path
+            if file_name:
+                query += " AND file_name = :file_name"
+                params["file_name"] = file_name
         else:
             # Convert set to comma-separated string for IN clause
             hashes_str = "','".join(current_hashes)
@@ -96,9 +96,9 @@ class ChunkRecord:
             """
             params = {"kb_id": self.kb_id}
             
-            if file_path:
-                query += " AND file_path = :file_path"
-                params["file_path"] = file_path
+            if file_name:
+                query += " AND file_name = :file_name"
+                params["file_name"] = file_name
             
         with self.engine.connect() as conn:
             result = conn.execute(text(query), params)

@@ -17,7 +17,7 @@ interface KnowledgeBase {
 }
 interface Document {
   id: number;
-  title: string;
+  file_name: string;
   file_path: string;
   file_size: number;
   content_type: string;
@@ -146,9 +146,11 @@ export default function KnowledgeBasePage() {
                             <FileIcon extension="doc" {...defaultStyles.docx} />
                           ) : doc.content_type.toLowerCase().includes("txt") ? (
                             <FileIcon extension="txt" {...defaultStyles.txt} />
+                          ) : doc.content_type.toLowerCase().includes("md") ? (
+                            <FileIcon extension="md" {...defaultStyles.md} />
                           ) : (
                             <FileIcon
-                              extension=""
+                              extension={doc.file_name.split(".").pop() || ""}
                               color="#E2E8F0"
                               labelColor="#94A3B8"
                             />
@@ -156,7 +158,7 @@ export default function KnowledgeBasePage() {
                         </div>
                         <div className="text-sm font-medium text-center max-w-[100px]">
                           <div className="line-clamp-2 overflow-hidden text-ellipsis">
-                            {doc.title}
+                            {doc.file_name}
                           </div>
                         </div>
                         <span className="text-xs text-muted-foreground mt-1">

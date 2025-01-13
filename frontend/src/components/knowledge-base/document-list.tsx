@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { api, ApiError } from "@/lib/api";
+import { FileIcon, defaultStyles } from "react-file-icon";
 import {
   Table,
   TableBody,
@@ -15,7 +16,7 @@ import {
 
 interface Document {
   id: number;
-  title: string;
+  file_name: string;
   file_path: string;
   file_size: number;
   content_type: string;
@@ -41,11 +42,12 @@ interface DocumentListProps {
 export function DocumentList({ knowledgeBaseId }: DocumentListProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
-        const data = await api.get<KnowledgeBase>(
+        const data = await api.get(
           `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}`
         );
         setDocuments(data.documents);
@@ -55,11 +57,26 @@ export function DocumentList({ knowledgeBaseId }: DocumentListProps) {
         } else {
           setError("Failed to fetch documents");
         }
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchDocuments();
   }, [knowledgeBaseId]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="space-y-4">
+          <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground animate-pulse">
+            Loading documents...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -81,7 +98,7 @@ export function DocumentList({ knowledgeBaseId }: DocumentListProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Title</TableHead>
+          <TableHead>Name</TableHead>
           <TableHead>Size</TableHead>
           <TableHead>Created</TableHead>
           <TableHead>Status</TableHead>
@@ -90,7 +107,28 @@ export function DocumentList({ knowledgeBaseId }: DocumentListProps) {
       <TableBody>
         {documents.map((doc) => (
           <TableRow key={doc.id}>
-            <TableCell className="font-medium">{doc.title}</TableCell>
+            <TableCell className="font-medium">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6">
+                  {doc.content_type.toLowerCase().includes("pdf") ? (
+                    <FileIcon extension="pdf" {...defaultStyles.pdf} />
+                  ) : doc.content_type.toLowerCase().includes("doc") ? (
+                    <FileIcon extension="doc" {...defaultStyles.docx} />
+                  ) : doc.content_type.toLowerCase().includes("txt") ? (
+                    <FileIcon extension="txt" {...defaultStyles.txt} />
+                  ) : doc.content_type.toLowerCase().includes("md") ? (
+                    <FileIcon extension="md" {...defaultStyles.md} />
+                  ) : (
+                    <FileIcon
+                      extension={doc.file_name.split(".").pop() || ""}
+                      color="#E2E8F0"
+                      labelColor="#94A3B8"
+                    />
+                  )}
+                </div>
+                {doc.file_name}
+              </div>
+            </TableCell>
             <TableCell>{(doc.file_size / 1024 / 1024).toFixed(2)} MB</TableCell>
             <TableCell>
               {formatDistanceToNow(new Date(doc.created_at), {

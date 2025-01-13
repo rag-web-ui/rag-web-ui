@@ -32,7 +32,7 @@ class Message(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     content = Column(LONGTEXT, nullable=False)
-    is_bot = Column(Boolean, default=False)
+    role = Column(String(50), nullable=False)
     chat_id = Column(Integer, ForeignKey("chats.id"), nullable=False)
 
     # Relationships

@@ -114,7 +114,7 @@ async def create_message(
     # Create user message
     user_message = Message(
         content=last_message["content"],
-        is_bot=False,
+        role="user",
         chat_id=chat_id
     )
     db.add(user_message)
@@ -126,7 +126,7 @@ async def create_message(
     # Create bot message placeholder
     bot_message = Message(
         content="",  # Will be updated with complete response
-        is_bot=True,
+        role="assistant",
         chat_id=chat_id
     )
     db.add(bot_message)

@@ -2,6 +2,9 @@ import hashlib
 from typing import List, Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
 from sqlalchemy.orm import Session
+from langchain.vectorstores import Chroma
+from langchain.embeddings import OpenAIEmbeddings
+from sqlalchemy import text
 
 from app.db.session import get_db
 from app.models.user import User
@@ -14,6 +17,7 @@ from app.schemas.knowledge import (
     DocumentResponse
 )
 from app.services.document_processor import process_document_background, upload_document, preview_document, PreviewResult
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -120,9 +124,45 @@ def delete_knowledge_base(
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     
-    db.delete(kb)
-    db.commit()
-    return {"message": "Knowledge base deleted"}
+    try:
+        # First delete all processing tasks
+        db.query(ProcessingTask).filter(
+            ProcessingTask.knowledge_base_id == kb_id
+        ).delete(synchronize_session=False)
+        
+        # Delete document chunks
+        db.execute(text(
+            "DELETE FROM document_chunks WHERE kb_id = :kb_id"
+        ), {"kb_id": kb_id})
+        
+        # Then delete all documents
+        db.query(Document).filter(
+            Document.knowledge_base_id == kb_id
+        ).delete(synchronize_session=False)
+        
+        # Initialize vector store to delete the collection
+        embeddings = OpenAIEmbeddings(
+            openai_api_key=settings.OPENAI_API_KEY,
+            openai_api_base=settings.OPENAI_API_BASE
+        )
+        persist_directory = "./chroma_db"
+        vector_store = Chroma(
+            collection_name=f"kb_{kb_id}",
+            embedding_function=embeddings,
+            persist_directory=persist_directory
+        )
+        
+        # Delete the collection from ChromaDB
+        vector_store._client.delete_collection(f"kb_{kb_id}")
+        
+        # Finally delete the knowledge base
+        db.delete(kb)
+        db.commit()
+        
+        return {"message": "Knowledge base deleted"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete knowledge base: {str(e)}")
 
 # Step 1: Upload document
 @router.post("/{kb_id}/document/upload")
@@ -144,9 +184,12 @@ async def upload_kb_document(
     file_content = await file.read()
     file_hash = hashlib.sha256(file_content).hexdigest()
     
-    # Check if a document with the same hash already exists
+    # Clean and normalize filename
+    file_name = "".join(c for c in file.filename if c.isalnum() or c in ('-', '_', '.')).strip()
+    
+    # Check if a document with the same name already exists in this knowledge base
     existing_document = db.query(Document).filter(
-        Document.file_hash == file_hash,
+        Document.file_name == file_name,
         Document.knowledge_base_id == kb_id
     ).first()
     
@@ -154,6 +197,7 @@ async def upload_kb_document(
         return {
             "document_id": existing_document.id,
             "file_path": existing_document.file_path,
+            "file_name": existing_document.file_name,
             "is_duplicate": True
         }
     
@@ -163,8 +207,8 @@ async def upload_kb_document(
     upload_result = await upload_document(file, kb_id)
     
     document = Document(
-        title=file.filename,
         file_path=upload_result.file_path,
+        file_name=upload_result.file_name,
         file_size=upload_result.file_size,
         content_type=upload_result.content_type,
         file_hash=file_hash,
@@ -177,6 +221,7 @@ async def upload_kb_document(
     return {
         "document_id": document.id,
         "file_path": upload_result.file_path,
+        "file_name": document.file_name,
         "is_duplicate": False
     }
 
@@ -238,6 +283,7 @@ async def process_kb_document(
     background_tasks.add_task(
         process_document_background,
         document.file_path,
+        document.file_name,
         kb_id,
         task.id,
         db,
@@ -294,9 +340,12 @@ async def upload_kb_documents(
         file_content = await file.read()
         file_hash = hashlib.sha256(file_content).hexdigest()
         
-        # Check if a document with the same hash already exists
+        # Clean and normalize filename
+        file_name = "".join(c for c in file.filename if c.isalnum() or c in ('-', '_', '.')).strip()
+        
+        # Check if a document with the same name already exists in this knowledge base
         existing_document = db.query(Document).filter(
-            Document.file_hash == file_hash,
+            Document.file_name == file_name,
             Document.knowledge_base_id == kb_id
         ).first()
         
@@ -304,7 +353,7 @@ async def upload_kb_documents(
             results.append({
                 "document_id": existing_document.id,
                 "file_path": existing_document.file_path,
-                "file_name": file.filename,
+                "file_name": existing_document.file_name,
                 "is_duplicate": True
             })
             continue
@@ -315,8 +364,8 @@ async def upload_kb_documents(
         upload_result = await upload_document(file, kb_id)
         
         document = Document(
-            title=file.filename,
             file_path=upload_result.file_path,
+            file_name=upload_result.file_name,
             file_size=upload_result.file_size,
             content_type=upload_result.content_type,
             file_hash=file_hash,
@@ -329,7 +378,7 @@ async def upload_kb_documents(
         results.append({
             "document_id": document.id,
             "file_path": upload_result.file_path,
-            "file_name": file.filename,
+            "file_name": document.file_name,
             "is_duplicate": False
         })
     
@@ -400,6 +449,7 @@ async def process_kb_documents(
         background_tasks.add_task(
             process_document_background,
             document.file_path,
+            document.file_name,
             kb_id,
             task.id,
             db,

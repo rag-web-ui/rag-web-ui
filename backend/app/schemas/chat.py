@@ -4,7 +4,7 @@ from datetime import datetime
 
 class MessageBase(BaseModel):
     content: str
-    is_bot: bool = False
+    role: str
 
 class MessageCreate(MessageBase):
     chat_id: int

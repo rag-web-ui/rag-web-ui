@@ -28,6 +28,7 @@ import uuid
 
 class UploadResult(BaseModel):
     file_path: str
+    file_name: str
     file_size: int
     content_type: str
     file_hash: str
@@ -40,7 +41,7 @@ class PreviewResult(BaseModel):
     chunks: List[TextChunk]
     total_chunks: int
 
-async def process_document(file_path: str, kb_id: int, chunk_size: int = 1000, chunk_overlap: int = 200) -> None:
+async def process_document(file_path: str, file_name: str, kb_id: int, chunk_size: int = 1000, chunk_overlap: int = 200) -> None:
     """Process document and store in vector database with incremental updates"""
     logger = logging.getLogger(__name__)
     
@@ -71,7 +72,7 @@ async def process_document(file_path: str, kb_id: int, chunk_size: int = 1000, c
         chunk_manager = ChunkRecord(kb_id)
         
         # Get existing chunk hashes for this file
-        existing_hashes = chunk_manager.list_chunks(file_path)
+        existing_hashes = chunk_manager.list_chunks(file_name)
         
         # Prepare new chunks
         new_chunks = []
@@ -91,27 +92,30 @@ async def process_document(file_path: str, kb_id: int, chunk_size: int = 1000, c
             
             # Create unique ID for the chunk
             chunk_id = hashlib.sha256(
-                f"{kb_id}:{file_path}:{chunk_hash}".encode()
+                f"{kb_id}:{file_name}:{chunk_hash}".encode()
             ).hexdigest()
             
             # Prepare chunk record
+            # Prepare metadata
+            metadata = {
+                **chunk.metadata,
+                "chunk_id": chunk_id,
+                "file_name": file_name,
+                "kb_id": kb_id
+            }
+            
             new_chunks.append({
                 "id": chunk_id,
                 "kb_id": kb_id,
-                "file_path": file_path,
-                "metadata": chunk.metadata,
+                "file_name": file_name,
+                "metadata": metadata,
                 "hash": chunk_hash
             })
             
             # Prepare document for vector store
             doc = LangchainDocument(
                 page_content=chunk.content,
-                metadata={
-                    **chunk.metadata,
-                    "chunk_id": chunk_id,
-                    "file_path": file_path,
-                    "kb_id": kb_id
-                }
+                metadata=metadata
             )
             documents_to_update.append(doc)
         
@@ -122,7 +126,7 @@ async def process_document(file_path: str, kb_id: int, chunk_size: int = 1000, c
             vector_store.add_documents(documents_to_update)
         
         # Delete removed chunks
-        chunks_to_delete = chunk_manager.get_deleted_chunks(current_hashes, file_path)
+        chunks_to_delete = chunk_manager.get_deleted_chunks(current_hashes, file_name)
         if chunks_to_delete:
             logger.info(f"Removing {len(chunks_to_delete)} deleted chunks")
             chunk_manager.delete_chunks(chunks_to_delete)
@@ -142,12 +146,9 @@ async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
     
     file_hash = hashlib.sha256(content).hexdigest()
     
-    base_name, ext = os.path.splitext(file.filename)
-    base_name = "".join(c for c in base_name if c.isalnum() or c in ('-', '_')).strip()
-    ext = ext.lower()
-
-    unique_filename = f"{base_name}_{uuid.uuid4().hex}{ext}"
-    object_path = f"kb_{kb_id}/{unique_filename}"
+    # Clean and normalize filename
+    file_name = "".join(c for c in file.filename if c.isalnum() or c in ('-', '_', '.')).strip()
+    object_path = f"kb_{kb_id}/{file_name}"
     
     content_types = {
         ".pdf": "application/pdf",
@@ -156,7 +157,8 @@ async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
         ".txt": "text/plain"
     }
     
-    content_type = content_types.get(ext, "application/octet-stream")
+    _, ext = os.path.splitext(file_name)
+    content_type = content_types.get(ext.lower(), "application/octet-stream")
     
     # Upload to MinIO
     minio_client = get_minio_client()
@@ -174,6 +176,7 @@ async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
         
     return UploadResult(
         file_path=object_path,
+        file_name=file_name,
         file_size=file_size,
         content_type=content_type,
         file_hash=file_hash
@@ -232,6 +235,7 @@ async def preview_document(file_path: str, chunk_size: int = 1000, chunk_overlap
 
 async def process_document_background(
     file_path: str,
+    file_name: str,
     kb_id: int,
     task_id: int,
     db: Session,
@@ -243,11 +247,11 @@ async def process_document_background(
         logging.basicConfig(level=logging.INFO)
         logger = logging.getLogger(__name__)
         
-        logger.info(f"Starting document processing for file: {file_path}, kb_id: {kb_id}, task_id: {task_id}")
+        logger.info(f"Starting document processing for file: {file_name}, kb_id: {kb_id}, task_id: {task_id}")
         
         # Process document
         logger.info("Calling process_document...")
-        await process_document(file_path, kb_id, chunk_size, chunk_overlap)
+        await process_document(file_path, file_name, kb_id, chunk_size, chunk_overlap)
         logger.info("Document processing completed successfully")
         
         # Update task status
