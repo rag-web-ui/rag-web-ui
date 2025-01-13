@@ -2,14 +2,15 @@ import hashlib
 from typing import List, Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
 from sqlalchemy.orm import Session
-from langchain.vectorstores import Chroma
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings
 from sqlalchemy import text
+import logging
 
 from app.db.session import get_db
 from app.models.user import User
 from app.core.security import get_current_user
-from app.models.knowledge import KnowledgeBase, Document, ProcessingTask
+from app.models.knowledge import KnowledgeBase, Document, ProcessingTask, DocumentChunk
 from app.schemas.knowledge import (
     KnowledgeBaseCreate,
     KnowledgeBaseResponse,
@@ -18,6 +19,8 @@ from app.schemas.knowledge import (
 )
 from app.services.document_processor import process_document_background, upload_document, preview_document, PreviewResult
 from app.core.config import settings
+from app.core.minio import get_minio_client
+from minio.error import MinioException
 
 router = APIRouter()
 
@@ -110,58 +113,79 @@ def update_knowledge_base(
     return kb
 
 @router.delete("/{kb_id}")
-def delete_knowledge_base(
+async def delete_knowledge_base(
     *,
     db: Session = Depends(get_db),
     kb_id: int,
     current_user: User = Depends(get_current_user)
 ) -> Any:
-    """Delete knowledge base."""
-    kb = db.query(KnowledgeBase).filter(
-        KnowledgeBase.id == kb_id,
-        KnowledgeBase.user_id == current_user.id
-    ).first()
+    """Delete knowledge base and all associated resources."""
+    logger = logging.getLogger(__name__)
+    
+    kb = (
+        db.query(KnowledgeBase)
+        .filter(
+            KnowledgeBase.id == kb_id,
+            KnowledgeBase.user_id == current_user.id
+        )
+        .first()
+    )
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     
     try:
-        # First delete all processing tasks
-        db.query(ProcessingTask).filter(
-            ProcessingTask.knowledge_base_id == kb_id
-        ).delete(synchronize_session=False)
+        # Get all document file paths before deletion
+        document_paths = [doc.file_path for doc in kb.documents]
         
-        # Delete document chunks
-        db.execute(text(
-            "DELETE FROM document_chunks WHERE kb_id = :kb_id"
-        ), {"kb_id": kb_id})
-        
-        # Then delete all documents
-        db.query(Document).filter(
-            Document.knowledge_base_id == kb_id
-        ).delete(synchronize_session=False)
-        
-        # Initialize vector store to delete the collection
+        # Initialize services
+        minio_client = get_minio_client()
         embeddings = OpenAIEmbeddings(
             openai_api_key=settings.OPENAI_API_KEY,
             openai_api_base=settings.OPENAI_API_BASE
         )
-        persist_directory = "./chroma_db"
         vector_store = Chroma(
             collection_name=f"kb_{kb_id}",
             embedding_function=embeddings,
-            persist_directory=persist_directory
+            persist_directory="./chroma_db"
         )
         
-        # Delete the collection from ChromaDB
-        vector_store._client.delete_collection(f"kb_{kb_id}")
+        # Clean up external resources first
+        cleanup_errors = []
         
-        # Finally delete the knowledge base
+        # 1. Clean up MinIO files
+        try:
+            # Delete all objects with prefix kb_{kb_id}/
+            objects = minio_client.list_objects(settings.MINIO_BUCKET_NAME, prefix=f"kb_{kb_id}/")
+            for obj in objects:
+                minio_client.remove_object(settings.MINIO_BUCKET_NAME, obj.object_name)
+            logger.info(f"Cleaned up MinIO files for knowledge base {kb_id}")
+        except MinioException as e:
+            cleanup_errors.append(f"Failed to clean up MinIO files: {str(e)}")
+            logger.error(f"MinIO cleanup error for kb {kb_id}: {str(e)}")
+        
+        # 2. Clean up vector store
+        try:
+            vector_store._client.delete_collection(f"kb_{kb_id}")
+            logger.info(f"Cleaned up vector store for knowledge base {kb_id}")
+        except Exception as e:
+            cleanup_errors.append(f"Failed to clean up vector store: {str(e)}")
+            logger.error(f"Vector store cleanup error for kb {kb_id}: {str(e)}")
+        
+        # Finally, delete database records in a single transaction
         db.delete(kb)
         db.commit()
         
-        return {"message": "Knowledge base deleted"}
+        # Report any cleanup errors in the response
+        if cleanup_errors:
+            return {
+                "message": "Knowledge base deleted with cleanup warnings",
+                "warnings": cleanup_errors
+            }
+        
+        return {"message": "Knowledge base and all associated resources deleted successfully"}
     except Exception as e:
         db.rollback()
+        logger.error(f"Failed to delete knowledge base {kb_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete knowledge base: {str(e)}")
 
 # Step 1: Upload document

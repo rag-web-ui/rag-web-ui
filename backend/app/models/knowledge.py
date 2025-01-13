@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, JSON
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import relationship
 from app.models.base import Base, TimestampMixin
@@ -17,6 +17,7 @@ class KnowledgeBase(Base, TimestampMixin):
     documents = relationship("Document", back_populates="knowledge_base", cascade="all, delete-orphan")
     user = relationship("User", back_populates="knowledge_bases")
     processing_tasks = relationship("ProcessingTask", back_populates="knowledge_base")
+    chunks = relationship("DocumentChunk", back_populates="knowledge_base", cascade="all, delete-orphan")
 
 class Document(Base, TimestampMixin):
     __tablename__ = "documents"
@@ -32,6 +33,7 @@ class Document(Base, TimestampMixin):
     # Relationships
     knowledge_base = relationship("KnowledgeBase", back_populates="documents") 
     processing_tasks = relationship("ProcessingTask", back_populates="document")
+    chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
 
     __table_args__ = (
         # Ensure file_name is unique within each knowledge base
@@ -50,4 +52,22 @@ class ProcessingTask(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     knowledge_base = relationship("KnowledgeBase", back_populates="processing_tasks")
-    document = relationship("Document", back_populates="processing_tasks") 
+    document = relationship("Document", back_populates="processing_tasks")
+
+class DocumentChunk(Base, TimestampMixin):
+    __tablename__ = "document_chunks"
+
+    id = Column(String(64), primary_key=True)  # SHA-256 hash as ID
+    kb_id = Column(Integer, ForeignKey("knowledge_bases.id"), nullable=False)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    file_name = Column(String(255), nullable=False)
+    chunk_metadata = Column(JSON, nullable=True)
+    hash = Column(String(64), nullable=False, index=True)  # Content hash for change detection
+    
+    # Relationships
+    knowledge_base = relationship("KnowledgeBase", back_populates="chunks")
+    document = relationship("Document", back_populates="chunks")
+
+    __table_args__ = (
+        sa.Index('idx_kb_file_name', 'kb_id', 'file_name'),
+    ) 

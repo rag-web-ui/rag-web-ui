@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { FileText } from "lucide-react";
 
 interface Document {
   id: number;
@@ -88,8 +89,18 @@ export function DocumentList({ knowledgeBaseId }: DocumentListProps) {
 
   if (documents.length === 0) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <p className="text-muted-foreground">No documents found</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] p-8">
+        <div className="flex flex-col items-center max-w-[420px] text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+            <FileText className="w-10 h-10 text-muted-foreground" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold">No documents yet</h3>
+            <p className="text-muted-foreground">
+              Upload your first document to start building your knowledge base.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

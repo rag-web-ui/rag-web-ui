@@ -41,7 +41,7 @@ class PreviewResult(BaseModel):
     chunks: List[TextChunk]
     total_chunks: int
 
-async def process_document(file_path: str, file_name: str, kb_id: int, chunk_size: int = 1000, chunk_overlap: int = 200) -> None:
+async def process_document(file_path: str, file_name: str, kb_id: int, document_id: int, chunk_size: int = 1000, chunk_overlap: int = 200) -> None:
     """Process document and store in vector database with incremental updates"""
     logger = logging.getLogger(__name__)
     
@@ -101,12 +101,14 @@ async def process_document(file_path: str, file_name: str, kb_id: int, chunk_siz
                 **chunk.metadata,
                 "chunk_id": chunk_id,
                 "file_name": file_name,
-                "kb_id": kb_id
+                "kb_id": kb_id,
+                "document_id": document_id
             }
             
             new_chunks.append({
                 "id": chunk_id,
                 "kb_id": kb_id,
+                "document_id": document_id,
                 "file_name": file_name,
                 "metadata": metadata,
                 "hash": chunk_hash
@@ -135,8 +137,7 @@ async def process_document(file_path: str, file_name: str, kb_id: int, chunk_siz
         logger.info("Document processing completed successfully")
         
     except Exception as e:
-        logger.error(f"Error in process_document: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
+        logger.error(f"Error processing document: {str(e)}")
         raise
 
 async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
@@ -241,39 +242,32 @@ async def process_document_background(
     db: Session,
     chunk_size: int = 1000,
     chunk_overlap: int = 200
-):
-    """Background task for processing document"""
+) -> None:
+    """Process document in background task"""
+    logger = logging.getLogger(__name__)
+    
     try:
-        logging.basicConfig(level=logging.INFO)
-        logger = logging.getLogger(__name__)
+        # Update task status to processing
+        task = db.query(ProcessingTask).filter(ProcessingTask.id == task_id).first()
+        if not task:
+            logger.error(f"Task {task_id} not found")
+            return
         
-        logger.info(f"Starting document processing for file: {file_name}, kb_id: {kb_id}, task_id: {task_id}")
+        task.status = "processing"
+        db.commit()
         
         # Process document
-        logger.info("Calling process_document...")
-        await process_document(file_path, file_name, kb_id, chunk_size, chunk_overlap)
-        logger.info("Document processing completed successfully")
+        await process_document(file_path, file_name, kb_id, task.document_id, chunk_size, chunk_overlap)
         
-        # Update task status
-        logger.info("Updating task status to completed")
-        task = db.query(ProcessingTask).filter(ProcessingTask.id == task_id).first()
-        if task:
-            task.status = "completed"
-            db.commit()
-            logger.info(f"Task {task_id} marked as completed")
-            
+        # Update task status to completed
+        task.status = "completed"
+        db.commit()
+        
+        logger.info(f"Background processing completed for task {task_id}")
+        
     except Exception as e:
-        logger.error(f"Error processing document: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        
-        # Update task status with error
-        task = db.query(ProcessingTask).filter(ProcessingTask.id == task_id).first()
+        logger.error(f"Error in background processing: {str(e)}")
         if task:
             task.status = "failed"
-            task.error_message = f"{str(e)}\n{traceback.format_exc()}"
-            db.commit()
-            logger.error(f"Task {task_id} marked as failed")
-        raise e
-    finally:
-        logger.info("Closing database connection")
-        db.close() 
+            task.error_message = str(e)
+            db.commit() 
