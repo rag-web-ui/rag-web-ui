@@ -178,7 +178,6 @@ export function DocumentUploadSteps({
         })
       );
 
-
       // 移除自动处理的逻辑，只更新步骤
       setCurrentStep(2);
       toast({
