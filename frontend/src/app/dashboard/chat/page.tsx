@@ -48,9 +48,8 @@ export default function ChatPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this chat?")) return;
-
     try {
-      await api.delete<void>(`http://localhost:8000/api/chat/${id}`);
+      await api.delete(`http://localhost:8000/api/chat/${id}`);
       setChats((prev) => prev.filter((chat) => chat.id !== id));
       toast({
         title: "Success",

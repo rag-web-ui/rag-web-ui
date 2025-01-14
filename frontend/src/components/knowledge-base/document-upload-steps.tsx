@@ -34,17 +34,27 @@ interface DocumentUploadStepsProps {
 
 interface FileStatus {
   file: File;
-  status: "pending" | "uploading" | "uploaded" | "error";
+  status:
+    | "pending"
+    | "uploading"
+    | "uploaded"
+    | "processing"
+    | "completed"
+    | "error";
+  uploadId?: number;
   documentId?: number;
-  filePath?: string;
+  tempPath?: string;
   error?: string;
 }
 
 interface UploadResult {
+  upload_id?: number;
+  document_id?: number;
   file_name: string;
-  document_id: number;
-  file_path: string;
-  is_duplicate: boolean;
+  status: "exists" | "pending";
+  message?: string;
+  skip_processing: boolean;
+  temp_path?: string;
 }
 
 interface PreviewChunk {
@@ -59,7 +69,7 @@ interface PreviewResponse {
 
 interface TaskResponse {
   tasks: Array<{
-    document_id: number;
+    upload_id: number;
     task_id: number;
   }>;
 }
@@ -148,23 +158,28 @@ export function DocumentUploadSteps({
         prev.map((f) => {
           const uploadResult = data.find((d) => d.file_name === f.file.name);
           if (uploadResult) {
-            return {
-              ...f,
-              status: "uploaded",
-              documentId: uploadResult.document_id,
-              filePath: uploadResult.file_path,
-            };
+            if (uploadResult.status === "exists") {
+              return {
+                ...f,
+                status: "completed",
+                documentId: uploadResult.document_id,
+                error: uploadResult.message,
+              };
+            } else {
+              return {
+                ...f,
+                status: "uploaded",
+                uploadId: uploadResult.upload_id,
+                tempPath: uploadResult.temp_path,
+              };
+            }
           }
           return f;
         })
       );
 
-      // Set the first document as selected by default
-      const firstUploadedFile = data[0];
-      if (firstUploadedFile) {
-        setSelectedDocumentId(firstUploadedFile.document_id);
-      }
 
+      // 移除自动处理的逻辑，只更新步骤
       setCurrentStep(2);
       toast({
         title: "Upload successful",
@@ -184,13 +199,21 @@ export function DocumentUploadSteps({
 
   // Step 2: Preview chunks
   const handlePreview = async () => {
-    if (!selectedDocumentId) return;
+    const selectedFile = files.find(
+      (f) =>
+        f.documentId === selectedDocumentId || f.uploadId === selectedDocumentId
+    );
+    if (!selectedFile) return;
 
     setIsLoading(true);
     try {
       const data = await api.post(
         `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/preview`,
-        [selectedDocumentId]
+        {
+          document_ids: [selectedDocumentId],
+          chunk_size: chunkSize,
+          chunk_overlap: chunkOverlap,
+        }
       );
 
       setUploadedDocuments(data);
@@ -212,27 +235,34 @@ export function DocumentUploadSteps({
   };
 
   // Step 3: Process documents
-  const handleProcess = async () => {
-    const uploadedFiles = files.filter((f) => f.status === "uploaded");
-    if (uploadedFiles.length === 0) return;
+  const handleProcess = async (uploadResults?: UploadResult[]) => {
+    const resultsToProcess =
+      uploadResults ||
+      files
+        .filter((f) => f.status === "uploaded")
+        .map((f) => ({
+          upload_id: f.uploadId!,
+          file_name: f.file.name,
+          status: "pending" as const,
+          skip_processing: false,
+          temp_path: f.tempPath!,
+        }));
+
+    if (resultsToProcess.length === 0) return;
 
     setIsLoading(true);
     try {
-      const documentIds = uploadedFiles.map((f) => f.documentId!);
       const data = (await api.post(
         `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/process`,
-        documentIds
+        resultsToProcess
       )) as TaskResponse;
 
       // Initialize task statuses
       const initialStatuses = data.tasks.reduce<TaskStatusMap>(
-        (
-          acc: TaskStatusMap,
-          task: { document_id: number; task_id: number }
-        ) => ({
+        (acc, task) => ({
           ...acc,
           [task.task_id]: {
-            document_id: task.document_id,
+            document_id: task.upload_id,
             status: "pending" as const,
           },
         }),
@@ -241,7 +271,7 @@ export function DocumentUploadSteps({
       setTaskStatuses(initialStatuses);
 
       // Start polling for task status
-      pollTaskStatus(data.tasks.map((t: { task_id: number }) => t.task_id));
+      pollTaskStatus(data.tasks.map((t) => t.task_id));
     } catch (error) {
       toast({
         title: "Processing failed",
@@ -249,6 +279,7 @@ export function DocumentUploadSteps({
           error instanceof ApiError ? error.message : "Something went wrong",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -276,14 +307,13 @@ export function DocumentUploadSteps({
 
         // Check if all tasks are completed or failed
         const allDone = Object.values(data).every(
-          (task: TaskStatus) =>
-            task.status === "completed" || task.status === "failed"
+          (task) => task.status === "completed" || task.status === "failed"
         );
 
         if (allDone) {
           setIsLoading(false);
           const hasErrors = Object.values(data).some(
-            (task: TaskStatus) => task.status === "failed"
+            (task) => task.status === "failed"
           );
           if (!hasErrors) {
             toast({
@@ -314,6 +344,11 @@ export function DocumentUploadSteps({
     };
 
     poll();
+  };
+
+  const handleProcessClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleProcess();
   };
 
   return (
@@ -379,9 +414,8 @@ export function DocumentUploadSteps({
                   Supports PDF, DOCX, TXT, and MD files
                 </p>
               </div>
-
               {files.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
                   {files.map((fileStatus) => (
                     <div
                       key={fileStatus.file.name}
@@ -465,8 +499,8 @@ export function DocumentUploadSteps({
                       .filter((f) => f.status === "uploaded")
                       .map((f) => (
                         <SelectItem
-                          key={f.documentId}
-                          value={f.documentId!.toString()}
+                          key={f.uploadId}
+                          value={f.uploadId!.toString()}
                         >
                           {f.file.name}
                         </SelectItem>
@@ -535,7 +569,7 @@ export function DocumentUploadSteps({
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-medium">
                         {
-                          files.find((f) => f.documentId === selectedDocumentId)
+                          files.find((f) => f.uploadId === selectedDocumentId)
                             ?.file.name
                         }
                       </h3>
@@ -579,7 +613,7 @@ export function DocumentUploadSteps({
                     );
                     return (
                       <div
-                        key={file.documentId}
+                        key={file.uploadId}
                         className="p-4 border rounded-lg space-y-2"
                       >
                         <div className="flex items-center justify-between">
@@ -628,12 +662,24 @@ export function DocumentUploadSteps({
               </div>
 
               <Button
-                onClick={handleProcess}
-                disabled={isLoading}
+                onClick={handleProcessClick}
+                disabled={
+                  isLoading ||
+                  files.filter((f) => f.status === "uploaded").length === 0
+                }
                 className="w-full"
               >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Start Processing
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Process
+                  </>
+                )}
               </Button>
             </div>
           </Card>

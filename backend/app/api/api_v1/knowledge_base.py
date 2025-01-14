@@ -6,16 +6,18 @@ from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 from sqlalchemy import text
 import logging
+from datetime import datetime, timedelta
 
 from app.db.session import get_db
 from app.models.user import User
 from app.core.security import get_current_user
-from app.models.knowledge import KnowledgeBase, Document, ProcessingTask, DocumentChunk
+from app.models.knowledge import KnowledgeBase, Document, ProcessingTask, DocumentChunk, DocumentUpload
 from app.schemas.knowledge import (
     KnowledgeBaseCreate,
     KnowledgeBaseResponse,
     KnowledgeBaseUpdate,
-    DocumentResponse
+    DocumentResponse,
+    PreviewRequest
 )
 from app.services.document_processor import process_document_background, upload_document, preview_document, PreviewResult
 from app.core.config import settings
@@ -23,6 +25,8 @@ from app.core.minio import get_minio_client
 from minio.error import MinioException
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 @router.post("", response_model=KnowledgeBaseResponse)
 def create_knowledge_base(
@@ -206,50 +210,64 @@ async def upload_kb_documents(
     
     results = []
     for file in files:
-        # Calculate hash from the file content
+        # 1. 计算文件 hash
         file_content = await file.read()
         file_hash = hashlib.sha256(file_content).hexdigest()
         
-        # Clean and normalize filename
-        file_name = "".join(c for c in file.filename if c.isalnum() or c in ('-', '_', '.')).strip()
-        
-        # Check if a document with the same name already exists in this knowledge base
+        # 2. 检查是否存在完全相同的文件（名称和hash都相同）
         existing_document = db.query(Document).filter(
-            Document.file_name == file_name,
+            Document.file_name == file.filename,
+            Document.file_hash == file_hash,
             Document.knowledge_base_id == kb_id
         ).first()
         
         if existing_document:
+            # 完全相同的文件，直接返回
             results.append({
                 "document_id": existing_document.id,
-                "file_path": existing_document.file_path,
                 "file_name": existing_document.file_name,
-                "is_duplicate": True
+                "status": "exists",
+                "message": "文件已存在且已处理完成",
+                "skip_processing": True
             })
             continue
         
-        # Reset file position for upload
+        # 3. 上传到临时目录
+        temp_path = f"kb_{kb_id}/temp/{file.filename}"
         await file.seek(0)
-        # Only upload if the file is new
-        upload_result = await upload_document(file, kb_id)
+        try:
+            minio_client = get_minio_client()
+            file_size = len(file_content)  # 使用之前读取的文件内容长度
+            minio_client.put_object(
+                bucket_name=settings.MINIO_BUCKET_NAME,
+                object_name=temp_path,
+                data=file.file,
+                length=file_size,  # 指定文件大小
+                content_type=file.content_type
+            )
+        except MinioException as e:
+            logger.error(f"Failed to upload file to MinIO: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to upload file")
         
-        document = Document(
-            file_path=upload_result.file_path,
-            file_name=upload_result.file_name,
-            file_size=upload_result.file_size,
-            content_type=upload_result.content_type,
+        # 4. 创建上传记录
+        upload = DocumentUpload(
+            knowledge_base_id=kb_id,
+            file_name=file.filename,
             file_hash=file_hash,
-            knowledge_base_id=kb_id
+            file_size=len(file_content),
+            content_type=file.content_type,
+            temp_path=temp_path
         )
-        db.add(document)
+        db.add(upload)
         db.commit()
-        db.refresh(document)
+        db.refresh(upload)
         
         results.append({
-            "document_id": document.id,
-            "file_path": upload_result.file_path,
-            "file_name": document.file_name,
-            "is_duplicate": False
+            "upload_id": upload.id,
+            "file_name": file.filename,
+            "temp_path": temp_path,
+            "status": "pending",
+            "skip_processing": False
         })
     
     return results
@@ -258,27 +276,39 @@ async def upload_kb_documents(
 @router.post("/{kb_id}/documents/preview")
 async def preview_kb_documents(
     kb_id: int,
-    document_ids: List[int],
-    chunk_size: int = 1000,
-    chunk_overlap: int = 200,
+    preview_request: PreviewRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> Dict[int, PreviewResult]:
     """Preview multiple documents' chunks"""
     results = {}
-    for doc_id in document_ids:
+    for doc_id in preview_request.document_ids:
+        # 先尝试在 Document 表中查找
         document = db.query(Document).join(KnowledgeBase).filter(
             Document.id == doc_id,
             Document.knowledge_base_id == kb_id,
             KnowledgeBase.user_id == current_user.id
         ).first()
-        if not document:
-            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+        
+        if document:
+            file_path = document.file_path
+        else:
+            # 如果不在 Document 表中，则在 DocumentUpload 表中查找
+            upload = db.query(DocumentUpload).join(KnowledgeBase).filter(
+                DocumentUpload.id == doc_id,
+                DocumentUpload.knowledge_base_id == kb_id,
+                KnowledgeBase.user_id == current_user.id
+            ).first()
+            
+            if not upload:
+                raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+            
+            file_path = upload.temp_path
         
         preview = await preview_document(
-            document.file_path,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
+            file_path,
+            chunk_size=preview_request.chunk_size,
+            chunk_overlap=preview_request.chunk_overlap
         )
         results[doc_id] = preview
     
@@ -288,47 +318,90 @@ async def preview_kb_documents(
 @router.post("/{kb_id}/documents/process")
 async def process_kb_documents(
     kb_id: int,
-    document_ids: List[int],
+    upload_results: List[dict],
     background_tasks: BackgroundTasks,
-    chunk_size: int = 1000,
-    chunk_overlap: int = 200,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Process multiple documents asynchronously"""
+    kb = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.user_id == current_user.id
+    ).first()
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    
     tasks = []
-    for doc_id in document_ids:
-        document = db.query(Document).join(KnowledgeBase).filter(
-            Document.id == doc_id,
-            Document.knowledge_base_id == kb_id,
-            KnowledgeBase.user_id == current_user.id
-        ).first()
-        if not document:
-            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+    for result in upload_results:
+        # 跳过已存在的文件
+        if result.get("skip_processing"):
+            continue
+            
+        upload_id = result["upload_id"]
+        upload = db.query(DocumentUpload).get(upload_id)
+        if not upload:
+            continue
         
-        task = ProcessingTask(
-            document_id=doc_id,
-            knowledge_base_id=kb_id,
-            status="pending"
-        )
-        db.add(task)
-        db.commit()
-        db.refresh(task)
-        
-        print(f"Processing task created: {task.id}")
-        background_tasks.add_task(
-            process_document_background,
-            document.file_path,
-            document.file_name,
-            kb_id,
-            task.id,
-            db,
-            chunk_size,
-            chunk_overlap
-        )
-        tasks.append({"document_id": doc_id, "task_id": task.id})
+        try:
+            # 创建处理任务
+            task = ProcessingTask(
+                document_upload_id=upload_id,  # 使用正确的字段名
+                knowledge_base_id=kb_id,
+                status="pending"
+            )
+            db.add(task)
+            db.commit()
+            db.refresh(task)
+            
+            background_tasks.add_task(
+                process_document_background,
+                upload.temp_path,
+                upload.file_name,
+                kb_id,
+                task.id,
+                db
+            )
+            tasks.append({
+                "upload_id": upload_id,
+                "task_id": task.id
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to create processing task: {str(e)}")
+            db.rollback()
+            continue
     
     return {"tasks": tasks}
+
+@router.post("/cleanup")
+async def cleanup_temp_files(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Clean up expired temporary files"""
+    # 找出过期的上传记录（24小时前）
+    expired_time = datetime.utcnow() - timedelta(hours=24)
+    expired_uploads = db.query(DocumentUpload).filter(
+        DocumentUpload.created_at < expired_time
+    ).all()
+    
+    minio_client = get_minio_client()
+    for upload in expired_uploads:
+        # 清理临时文件
+        try:
+            minio_client.remove_object(
+                bucket_name=settings.MINIO_BUCKET_NAME,
+                object_name=upload.temp_path
+            )
+        except MinioException as e:
+            logger.error(f"Failed to delete temp file {upload.temp_path}: {str(e)}")
+        
+        # 删除记录
+        db.delete(upload)
+    
+    db.commit()
+    
+    return {"message": f"Cleaned up {len(expired_uploads)} expired uploads"}
 
 # Get batch processing status
 @router.get("/{kb_id}/documents/tasks")
@@ -342,7 +415,7 @@ async def get_processing_tasks(
     # Convert comma-separated string to list of integers
     task_id_list = [int(id.strip()) for id in task_ids.split(",")]
     
-    tasks = db.query(ProcessingTask).join(KnowledgeBase).filter(
+    tasks = db.query(ProcessingTask).join(DocumentUpload).join(KnowledgeBase).filter(
         ProcessingTask.id.in_(task_id_list),
         ProcessingTask.knowledge_base_id == kb_id,
         KnowledgeBase.user_id == current_user.id
@@ -352,7 +425,9 @@ async def get_processing_tasks(
         task.id: {
             "document_id": task.document_id,
             "status": task.status,
-            "error_message": task.error_message
+            "error_message": task.error_message,
+            "upload_id": task.document_upload_id,
+            "file_name": task.document_upload.file_name if task.document_upload else None
         }
         for task in tasks
     }

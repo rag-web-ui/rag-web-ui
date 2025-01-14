@@ -17,7 +17,7 @@ interface Message {
 interface ChatMessage {
   id: number;
   content: string;
-  is_bot: boolean;
+  role: "assistant" | "user";
   created_at: string;
 }
 
@@ -42,7 +42,11 @@ export default function ChatPage({ params }: { params: { id: string } }) {
   } = useChat({
     api: `http://localhost:8000/api/chat/${params.id}/messages`,
     headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      Authorization: `Bearer ${
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("token")
+          : ""
+      }`,
     },
     initialMessages: [],
   });
@@ -63,7 +67,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
       // Convert existing messages to the format expected by useChat
       const formattedMessages = data.messages.map((msg) => ({
         id: msg.id.toString(),
-        role: msg.is_bot ? ("assistant" as const) : ("user" as const),
+        role: msg.role,
         content: msg.content,
       }));
       // Set initial messages using setMessages instead of push

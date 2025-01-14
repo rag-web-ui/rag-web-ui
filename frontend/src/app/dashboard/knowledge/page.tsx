@@ -133,7 +133,7 @@ export default function KnowledgeBasePage() {
               {kb.documents.length > 0 && (
                 <div className="border-t pt-4">
                   <h4 className="text-sm font-medium mb-2">Documents</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 max-h-[400px] overflow-y-auto">
                     {kb.documents.slice(0, 9).map((doc) => (
                       <div
                         key={doc.id}

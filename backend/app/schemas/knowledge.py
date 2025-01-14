@@ -1,38 +1,6 @@
-from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-
-class ProcessingTaskResponse(BaseModel):
-    id: int
-    status: str
-    error_message: Optional[str] = None
-    document_id: int
-    knowledge_base_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class DocumentBase(BaseModel):
-    file_path: Optional[str] = None
-    file_name: str
-    file_size: Optional[int] = None
-    content_type: Optional[str] = None
-    file_hash: Optional[str] = None
-
-class DocumentCreate(DocumentBase):
-    knowledge_base_id: int
-
-class DocumentResponse(DocumentBase):
-    id: int
-    knowledge_base_id: int
-    created_at: datetime
-    updated_at: datetime
-    processing_tasks: List[ProcessingTaskResponse] = []
-
-    class Config:
-        from_attributes = True
+from pydantic import BaseModel
 
 class KnowledgeBaseBase(BaseModel):
     name: str
@@ -44,6 +12,63 @@ class KnowledgeBaseCreate(KnowledgeBaseBase):
 class KnowledgeBaseUpdate(KnowledgeBaseBase):
     pass
 
+class DocumentBase(BaseModel):
+    file_name: str
+    file_path: str
+    file_hash: str
+    file_size: int
+    content_type: str
+
+class DocumentCreate(DocumentBase):
+    knowledge_base_id: int
+
+class DocumentUploadBase(BaseModel):
+    file_name: str
+    file_hash: str
+    file_size: int
+    content_type: str
+    temp_path: str
+    status: str = "pending"
+    error_message: Optional[str] = None
+
+class DocumentUploadCreate(DocumentUploadBase):
+    knowledge_base_id: int
+
+class DocumentUploadResponse(DocumentUploadBase):
+    id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class ProcessingTaskBase(BaseModel):
+    status: str
+    error_message: Optional[str] = None
+
+class ProcessingTaskCreate(ProcessingTaskBase):
+    document_id: int
+    knowledge_base_id: int
+
+class ProcessingTask(ProcessingTaskBase):
+    id: int
+    document_id: int
+    knowledge_base_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class DocumentResponse(DocumentBase):
+    id: int
+    knowledge_base_id: int
+    created_at: datetime
+    updated_at: datetime
+    processing_tasks: List[ProcessingTask] = []
+
+    class Config:
+        from_attributes = True
+
 class KnowledgeBaseResponse(KnowledgeBaseBase):
     id: int
     user_id: int
@@ -52,4 +77,9 @@ class KnowledgeBaseResponse(KnowledgeBaseBase):
     documents: List[DocumentResponse] = []
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+class PreviewRequest(BaseModel):
+    document_ids: List[int]
+    chunk_size: int = 1000
+    chunk_overlap: int = 200 
