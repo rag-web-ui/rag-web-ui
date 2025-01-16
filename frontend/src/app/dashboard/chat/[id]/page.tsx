@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "ai/react";
 import { Send } from "lucide-react";
@@ -32,6 +32,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const {
     messages,
@@ -42,7 +43,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
     isLoading,
     setMessages,
   } = useChat({
-    api: `http://localhost:8002/api/chat/${params.id}/messages`,
+    api: `http://localhost:8000/api/chat/${params.id}/messages`,
     headers: {
       Authorization: `Bearer ${
         typeof window !== "undefined"
@@ -53,17 +54,22 @@ export default function ChatPage({ params }: { params: { id: string } }) {
   });
 
   useEffect(() => {
-    fetchChat();
-  }, []);
+    if (isInitialLoad) {
+      fetchChat();
+      setIsInitialLoad(false);
+    }
+  }, [isInitialLoad]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (!isInitialLoad) {
+      scrollToBottom();
+    }
+  }, [messages, isInitialLoad]);
 
   const fetchChat = async () => {
     try {
       const data: Chat = await api.get(
-        `http://localhost:8002/api/chat/${params.id}`
+        `http://localhost:8000/api/chat/${params.id}`
       );
       const formattedMessages = data.messages.map((msg) => ({
         id: msg.id.toString(),
@@ -97,7 +103,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
             message.role === "assistant" ? (
               <div key={message.id} className="flex justify-start">
                 <div className="max-w-[80%] rounded-lg px-4 py-2 bg-accent text-accent-foreground">
-                  <Answer markdown={message.content} />
+                  <Answer key={message.id} markdown={message.content} />
                 </div>
               </div>
             ) : (

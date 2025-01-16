@@ -38,7 +38,7 @@ export default function KnowledgeBasePage() {
 
   const fetchKnowledgeBases = async () => {
     try {
-      const data = await api.get("http://localhost:8002/api/knowledge-base");
+      const data = await api.get("http://localhost:8000/api/knowledge-base");
       setKnowledgeBases(data);
     } catch (error) {
       console.error("Failed to fetch knowledge bases:", error);
@@ -58,7 +58,7 @@ export default function KnowledgeBasePage() {
     if (!confirm("Are you sure you want to delete this knowledge base?"))
       return;
     try {
-      await api.delete(`http://localhost:8002/api/knowledge-base/${id}`);
+      await api.delete(`http://localhost:8000/api/knowledge-base/${id}`);
       setKnowledgeBases((prev) => prev.filter((kb) => kb.id !== id));
       toast({
         title: "Success",

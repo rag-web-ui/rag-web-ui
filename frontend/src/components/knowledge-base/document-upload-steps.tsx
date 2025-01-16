@@ -146,7 +146,7 @@ export function DocumentUploadSteps({
       });
 
       const data = (await api.post(
-        `http://localhost:8002/api/knowledge-base/${knowledgeBaseId}/documents/upload`,
+        `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/upload`,
         formData,
         {
           headers: {},
@@ -207,7 +207,7 @@ export function DocumentUploadSteps({
     setIsLoading(true);
     try {
       const data = await api.post(
-        `http://localhost:8002/api/knowledge-base/${knowledgeBaseId}/documents/preview`,
+        `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/preview`,
         {
           document_ids: [selectedDocumentId],
           chunk_size: chunkSize,
@@ -252,7 +252,7 @@ export function DocumentUploadSteps({
     setIsLoading(true);
     try {
       const data = (await api.post(
-        `http://localhost:8002/api/knowledge-base/${knowledgeBaseId}/documents/process`,
+        `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/process`,
         resultsToProcess
       )) as TaskResponse;
 
@@ -288,7 +288,7 @@ export function DocumentUploadSteps({
     const poll = async () => {
       try {
         const response = (await api.get(
-          `http://localhost:8002/api/knowledge-base/${knowledgeBaseId}/documents/tasks?task_ids=${taskIds.join(
+          `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}/documents/tasks?task_ids=${taskIds.join(
             ","
           )}`
         )) as TaskStatusResponse;

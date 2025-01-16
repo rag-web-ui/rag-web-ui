@@ -128,11 +128,7 @@ async def create_message(
         response_stream(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Content-Type": "text/event-stream",
-            "X-Accel-Buffering": "no",  # Disable Nginx buffering
-            "x-vercel-ai-data-stream": "v1"  # Enable AI SDK data stream protocol
+            "x-vercel-ai-data-stream": "v1"
         }
     )
 

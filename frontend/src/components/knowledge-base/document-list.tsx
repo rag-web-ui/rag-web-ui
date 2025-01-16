@@ -49,7 +49,7 @@ export function DocumentList({ knowledgeBaseId }: DocumentListProps) {
     const fetchDocuments = async () => {
       try {
         const data = await api.get(
-          `http://localhost:8002/api/knowledge-base/${knowledgeBaseId}`
+          `http://localhost:8000/api/knowledge-base/${knowledgeBaseId}`
         );
         setDocuments(data.documents);
       } catch (error) {

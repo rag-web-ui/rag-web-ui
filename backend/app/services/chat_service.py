@@ -1,4 +1,5 @@
 import json
+import base64
 from typing import List, AsyncGenerator
 from sqlalchemy.orm import Session
 from langchain_chroma import Chroma
@@ -150,29 +151,41 @@ async def generate_response(
             "input": query,
             "chat_history": chat_history
         }):
-            # if "context" in chunk:
-            #     print("Context:", chunk["context"])
-            #     serializable_context = []
-            #     for context in chunk["context"]:
-            #         serializable_doc = {
-            #             "page_content": context.page_content,
-            #             "metadata": context.metadata,
-            #         }
-            #         serializable_context.append(serializable_doc)
-            #     json_string = json.dumps(
-            #         {"context": serializable_context},
-            #         default=default_handler,  # 自定义序列化处理器
-            #         ensure_ascii=False,       # 允许非ASCII字符
-            #         indent=2,                # 格式化输出
-            #         separators=(',', ':'),   # 紧凑表示
-            #     )
-            #     yield f'0:{json.dumps([{"context": serializable_context}])}\n'
+            if "context" in chunk:
+                serializable_context = []
+                for context in chunk["context"]:
+                    serializable_doc = {
+                        "page_content": context.page_content.replace('"', '\\"'),
+                        "metadata": context.metadata,
+                    }
+                    serializable_context.append(serializable_doc)
                 
+                # 先替换引号，再序列化
+                escaped_context = json.dumps({
+                    "context": serializable_context
+                })
+
+                # print context
+                print(escaped_context)
+
+                # 转成 base64
+                base64_context = base64.b64encode(escaped_context.encode()).decode()
+
+                # 连接符号
+                separator = "__LLM_RESPONSE__"
+                
+                yield f'0:"{base64_context}{separator}"\n'
+                full_response += base64_context + separator
+
             if "answer" in chunk:
                 answer_chunk = chunk["answer"]
                 full_response += answer_chunk
-                yield f'0:"{answer_chunk}"\n'
-        
+                # Escape quotes and use json.dumps to properly handle special characters
+                escaped_chunk = (answer_chunk
+                    .replace('"', '\\"')
+                    .replace('\n', '\\n'))
+                yield f'0:"{escaped_chunk}"\n'
+            
         # Update bot message content
         bot_message.content = full_response
         db.commit()
@@ -180,7 +193,7 @@ async def generate_response(
     except Exception as e:
         error_message = f"Error generating response: {str(e)}"
         print(error_message)
-        yield f'3:"{error_message}"\n'
+        yield '3:{text}\n'.format(text=error_message)
         
         # Update bot message with error
         if 'bot_message' in locals():

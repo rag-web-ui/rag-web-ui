@@ -30,7 +30,7 @@ export default function LoginPage() {
       formUrlEncoded.append("password", password as string);
 
       const data = await api.post(
-        "http://localhost:8002/api/auth/token",
+        "http://localhost:8000/api/auth/token",
         formUrlEncoded,
         {
           headers: {
