@@ -111,58 +111,18 @@ async def create_message(
     if last_message["role"] != "user":
         raise HTTPException(status_code=400, detail="Last message must be from user")
     
-    # Create user message
-    user_message = Message(
-        content=last_message["content"],
-        role="user",
-        chat_id=chat_id
-    )
-    db.add(user_message)
-    db.commit()
-    
     # Get knowledge base IDs
     knowledge_base_ids = [kb.id for kb in chat.knowledge_bases]
-    
-    # Create bot message placeholder
-    bot_message = Message(
-        content="",  # Will be updated with complete response
-        role="assistant",
-        chat_id=chat_id
-    )
-    db.add(bot_message)
-    db.commit()
-    
-    bot_message_id = bot_message.id
-    async def response_stream():
-        try:
-          full_response = ""
-          async for chunk in generate_response(
-              last_message["content"], 
-              messages,
-              knowledge_base_ids,
-              db
-          ):
-              chunk_formatted = chunk.replace('\n', '\\n')
-              full_response += chunk
-              yield f'0:"{chunk_formatted}"\n'
-          try:
-              bot_msg = db.query(Message).filter(Message.id == bot_message_id).first()
-              if bot_msg:
-                  bot_msg.content = full_response
-                  db.commit()
-          finally:
-              db.close()
 
-        except Exception as e:
-            error_message = f"Error: {str(e)}"
-            yield f"0:\"{error_message}\"\n"
-            try:
-                bot_msg = db.query(Message).filter(Message.id == bot_message_id).first()
-                if bot_msg:
-                    bot_msg.content = error_message
-                    db.commit()
-            finally:
-                db.close()
+    async def response_stream():
+        async for chunk in generate_response(
+            query=last_message["content"],
+            messages=messages,
+            knowledge_base_ids=knowledge_base_ids,
+            chat_id=chat_id,
+            db=db
+        ):
+            yield chunk
 
     return StreamingResponse(
         response_stream(),
@@ -172,6 +132,7 @@ async def create_message(
             "Connection": "keep-alive",
             "Content-Type": "text/event-stream",
             "X-Accel-Buffering": "no",  # Disable Nginx buffering
+            "x-vercel-ai-data-stream": "v1"  # Enable AI SDK data stream protocol
         }
     )
 

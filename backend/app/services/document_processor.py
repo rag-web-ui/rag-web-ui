@@ -366,6 +366,11 @@ async def process_document_background(
                 chunk_id = hashlib.sha256(
                     f"{kb_id}:{file_name}:{chunk.page_content}".encode()
                 ).hexdigest()
+
+                chunk.metadata["source"] = file_name
+                chunk.metadata["kb_id"] = kb_id
+                chunk.metadata["document_id"] = document.id
+                chunk.metadata["chunk_id"] = chunk_id
                 
                 doc_chunk = DocumentChunk(
                     id=chunk_id,  # 添加 ID 字段

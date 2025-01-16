@@ -30,13 +30,10 @@ export default function NewKnowledgeBasePage() {
       const name = formData.get("name") as string;
       const description = formData.get("description") as string;
 
-      const data = await api.post(
-        "http://localhost:8000/api/knowledge-base",
-        {
-          name,
-          description,
-        }
-      );
+      const data = await api.post("http://localhost:8002/api/knowledge-base", {
+        name,
+        description,
+      });
 
       router.push(`/dashboard/knowledge/${data.id}`);
     } catch (error) {

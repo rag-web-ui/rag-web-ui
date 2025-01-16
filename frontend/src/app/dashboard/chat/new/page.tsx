@@ -27,7 +27,7 @@ export default function NewChatPage() {
 
   const fetchKnowledgeBases = async () => {
     try {
-      const data = await api.get("http://localhost:8000/api/knowledge-base");
+      const data = await api.get("http://localhost:8002/api/knowledge-base");
       setKnowledgeBases(data);
     } catch (error) {
       console.error("Failed to fetch knowledge bases:", error);
@@ -52,7 +52,7 @@ export default function NewChatPage() {
     setIsSubmitting(true);
 
     try {
-      const data = await api.post("http://localhost:8000/api/chat", {
+      const data = await api.post("http://localhost:8002/api/chat", {
         title,
         knowledge_base_ids: selectedKBs,
       });

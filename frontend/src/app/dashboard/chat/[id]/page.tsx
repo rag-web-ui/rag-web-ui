@@ -7,6 +7,7 @@ import { Send } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { Answer } from "@/components/chat/answer";
 
 interface Message {
   id: string;
@@ -34,13 +35,14 @@ export default function ChatPage({ params }: { params: { id: string } }) {
 
   const {
     messages,
+    data,
     input,
     handleInputChange,
     handleSubmit,
     isLoading,
     setMessages,
   } = useChat({
-    api: `http://localhost:8000/api/chat/${params.id}/messages`,
+    api: `http://localhost:8002/api/chat/${params.id}/messages`,
     headers: {
       Authorization: `Bearer ${
         typeof window !== "undefined"
@@ -48,7 +50,6 @@ export default function ChatPage({ params }: { params: { id: string } }) {
           : ""
       }`,
     },
-    initialMessages: [],
   });
 
   useEffect(() => {
@@ -62,15 +63,13 @@ export default function ChatPage({ params }: { params: { id: string } }) {
   const fetchChat = async () => {
     try {
       const data: Chat = await api.get(
-        `http://localhost:8000/api/chat/${params.id}`
+        `http://localhost:8002/api/chat/${params.id}`
       );
-      // Convert existing messages to the format expected by useChat
       const formattedMessages = data.messages.map((msg) => ({
         id: msg.id.toString(),
         role: msg.role,
         content: msg.content,
       }));
-      // Set initial messages using setMessages instead of push
       setMessages(formattedMessages);
     } catch (error) {
       console.error("Failed to fetch chat:", error);
@@ -91,29 +90,26 @@ export default function ChatPage({ params }: { params: { id: string } }) {
 
   return (
     <DashboardLayout>
+      {JSON.stringify(data)}
       <div className="flex flex-col h-[calc(100vh-2rem)]">
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${
-                message.role === "assistant" ? "justify-start" : "justify-end"
-              }`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  message.role === "assistant"
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-primary text-primary-foreground"
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{message.content}</p>
+          {messages.map((message) =>
+            message.role === "assistant" ? (
+              <div key={message.id} className="flex justify-start">
+                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-accent text-accent-foreground">
+                  <Answer markdown={message.content} />
+                </div>
               </div>
-            </div>
-          ))}
+            ) : (
+              <div key={message.id} className="flex justify-end">
+                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-primary text-primary-foreground">
+                  {message.content}
+                </div>
+              </div>
+            )
+          )}
           <div ref={messagesEndRef} />
         </div>
-
         <form
           onSubmit={handleSubmit}
           className="border-t p-4 flex items-center space-x-4"

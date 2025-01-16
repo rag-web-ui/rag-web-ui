@@ -4,6 +4,7 @@ from app.api.api_v1.api import api_router
 from app.core.config import settings
 from app.core.minio import init_minio
 
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
