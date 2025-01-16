@@ -32,7 +32,7 @@ export default function ChatPage() {
 
   const fetchChats = async () => {
     try {
-      const data = await api.get<Chat[]>("http://localhost:8000/api/chat");
+      const data = await api.get("http://localhost:8000/api/chat");
       setChats(data);
     } catch (error) {
       console.error("Failed to fetch chats:", error);
