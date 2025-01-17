@@ -1,19 +1,18 @@
+import React, {
+  FC,
+  useMemo,
+  useEffect,
+  useState,
+  ClassAttributes,
+} from "react";
+import { AnchorHTMLAttributes } from "react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FC, useMemo, useEffect, useState } from "react";
 import Markdown from "react-markdown";
-
-const markdownParse = (text: string) => {
-  return text
-    .replace(/\[\[([cC])itation/g, "[citation")
-    .replace(/[cC]itation:(\d+)]]/g, "citation:$1]")
-    .replace(/\[\[([cC]itation:\d+)]](?!])/g, `[$1]`)
-    .replace(/\[[cC]itation:(\d+)]/g, "[citation]($1)");
-};
 
 interface Citation {
   id: number;
@@ -21,92 +20,42 @@ interface Citation {
   metadata: Record<string, any>;
 }
 
-interface ParsedResponse {
-  citations: Citation[];
-  text: string;
-}
-
-export const Answer: FC<{ markdown: string }> = ({ markdown }) => {
-  const [parsedContent, setParsedContent] = useState<{
-    citations: Citation[];
-    text: string;
-    parsed: string;
-  }>({ citations: [], text: "", parsed: "" });
-
-  const parseResponse = useMemo(
-    () =>
-      (markdown: string): ParsedResponse => {
-        if (!markdown) return { citations: [], text: "" };
-
-        if (!markdown.includes("__LLM_RESPONSE__")) {
-          return { citations: [], text: markdown };
-        }
-
-        const [base64Part, responseText] = markdown.split("__LLM_RESPONSE__");
-
-        try {
-          const contextData = base64Part
-            ? (JSON.parse(atob(base64Part)) as {
-                context: Array<{
-                  page_content: string;
-                  metadata: Record<string, any>;
-                }>;
-              })
-            : null;
-
-          const citations: Citation[] =
-            contextData?.context.map((citation, index) => ({
-              id: index + 1,
-              text: citation.page_content,
-              metadata: citation.metadata,
-            })) || [];
-
-          return {
-            citations,
-            text: responseText || "",
-          };
-        } catch (e) {
-          console.error("Failed to parse response:", e);
-          return { citations: [], text: "" };
-        }
-      },
-    []
-  );
-
-  useEffect(() => {
-    if (!markdown) return;
-
-    const { citations, text } = parseResponse(markdown);
-    const parsed = text ? markdownParse(text) : "";
-
-    setParsedContent({ citations, text, parsed });
-  }, [markdown, parseResponse]);
-
+export const Answer: FC<{
+  markdown: string;
+  citations?: Citation[];
+}> = ({ markdown, citations = [] }) => {
+  console.log("citations", citations);
   const CitationLink = useMemo(
     () =>
-      ({ href }: { href: string }) => {
-        const citationId = href.match(/^(\d+)$/)?.[1];
+      (
+        props: ClassAttributes<HTMLAnchorElement> &
+          AnchorHTMLAttributes<HTMLAnchorElement>
+      ) => {
+        const citationId = props.href?.match(/^(\d+)$/)?.[1];
         const citation = citationId
-          ? parsedContent.citations[parseInt(citationId) - 1]
+          ? citations[parseInt(citationId) - 1]
           : null;
 
         if (!citation) {
-          return (
-            <span className="text-blue-600 underline" data-citation-link>
-              [{href}]
-            </span>
-          );
+          return <a {...props}>[{props.href}]</a>;
         }
+
+        console.log("citation", citation);
+        console.log("citations 1", citations[0]);
+        console.log("citations 2", citations[1]);
+        console.log("citations 3", citations[2]);
 
         return (
           <Popover>
             <PopoverTrigger asChild>
-              <span
+              <a
+                {...props}
+                href="#"
                 role="button"
                 className="text-blue-600 underline cursor-pointer"
               >
-                [{href}]
-              </span>
+                [{props.href}]
+              </a>
             </PopoverTrigger>
             <PopoverContent
               side="top"
@@ -130,7 +79,7 @@ export const Answer: FC<{ markdown: string }> = ({ markdown }) => {
           </Popover>
         );
       },
-    [parsedContent.citations]
+    [citations]
   );
 
   if (!markdown) {
@@ -145,10 +94,6 @@ export const Answer: FC<{ markdown: string }> = ({ markdown }) => {
     );
   }
 
-  if (!parsedContent.text) {
-    return null;
-  }
-
   return (
     <div className="prose prose-sm max-w-full">
       <Markdown
@@ -156,7 +101,7 @@ export const Answer: FC<{ markdown: string }> = ({ markdown }) => {
           a: CitationLink,
         }}
       >
-        {parsedContent.parsed}
+        {markdown}
       </Markdown>
     </div>
   );

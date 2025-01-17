@@ -80,7 +80,7 @@ async def generate_response(
         llm = ChatOpenAI(
             temperature=0,
             streaming=True,
-            model="gpt-4o",
+            model="gpt-4",
             openai_api_key=settings.OPENAI_API_KEY,
             openai_api_base=settings.OPENAI_API_BASE
         )
@@ -109,16 +109,17 @@ async def generate_response(
         # Create QA prompt
         qa_system_prompt = (
             "You are given a user question, and please write clean, concise and accurate answer to the question. "
-            "You will be given a set of related contexts to the question, **each starting with a reference number "
-            "like [[citation:x]], where x is a number.** Please use the context and cite the context at the end of "
-            "each sentence if applicable. Your answer must be correct, accurate and written by an expert using an "
-            "unbiased and professional tone. Please limit to 1024 tokens. Do not give any information that is not "
-            "related to the question, and do not repeat. Say 'information is missing on' followed by the related topic, "
-            "if the given context do not provide sufficient information. **Please cite the contexts with the reference "
-            "numbers, in the format [citation:x]. If a sentence comes from multiple contexts, please list all applicable "
-            "citations, like [citation:3][citation:5].** Other than code and specific names and citations, your answer "
-            "must be written in the same language as the question. concise.\n\nContext: {context} Remember, don't blindly "
-            "repeat the contexts verbatim. "
+            "You will be given a set of related contexts to the question, which are numbered sequentially starting from 1. "
+            "Each context has an implicit reference number based on its position in the array (first context is 1, second is 2, etc.). "
+            "Please use these contexts and cite them using the format [citation:x] at the end of each sentence where applicable. "
+            "Your answer must be correct, accurate and written by an expert using an unbiased and professional tone. "
+            "Please limit to 1024 tokens. Do not give any information that is not related to the question, and do not repeat. "
+            "Say 'information is missing on' followed by the related topic, if the given context do not provide sufficient information. "
+            "If a sentence draws from multiple contexts, please list all applicable citations, like [citation:1][citation:2]. "
+            "Other than code and specific names and citations, your answer must be written in the same language as the question. "
+            "Be concise.\n\nContext: {context}\n\n"
+            "Remember: Cite contexts by their position number (1 for first context, 2 for second, etc.) and don't blindly "
+            "repeat the contexts verbatim."
         )
         qa_prompt = ChatPromptTemplate.from_messages([
             ("system", qa_system_prompt),
@@ -164,9 +165,6 @@ async def generate_response(
                 escaped_context = json.dumps({
                     "context": serializable_context
                 })
-
-                # print context
-                print(escaped_context)
 
                 # 转成 base64
                 base64_context = base64.b64encode(escaped_context.encode()).decode()
