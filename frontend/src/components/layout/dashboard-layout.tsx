@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Book, MessageSquare, LogOut, Menu } from "lucide-react";
+import Breadcrumb from "@/components/ui/breadcrumb";
 
 export default function DashboardLayout({
   children,
@@ -84,6 +85,7 @@ export default function DashboardLayout({
       {/* Main content */}
       <div className="lg:pl-64">
         <main className="min-h-screen py-6 px-4 sm:px-6 lg:px-8">
+          <Breadcrumb />
           {children}
         </main>
       </div>
