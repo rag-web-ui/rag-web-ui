@@ -33,7 +33,7 @@ const Breadcrumb = () => {
   if (pathname === "/") return null;
 
   return (
-    <nav className="flex items-center space-x-1 text-sm text-muted-foreground mb-4">
+    <nav className="flex items-center space-x-2 text-base text-muted-foreground mb-6">
       <Link
         href="/dashboard"
         className="flex items-center hover:text-foreground transition-colors"
@@ -43,7 +43,7 @@ const Breadcrumb = () => {
 
       {breadcrumbs.map((breadcrumb, index) => (
         <div key={breadcrumb.href} className="flex items-center">
-          <ChevronRight className="h-4 w-4 mx-1" />
+          <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground/50" />
           {breadcrumb.isLast ? (
             <span className="text-foreground font-medium">
               {breadcrumb.label}

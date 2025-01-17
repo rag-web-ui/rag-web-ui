@@ -245,8 +245,8 @@ export default function ChatPage({ params }: { params: { id: string } }) {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col h-[calc(100vh-2rem)]">
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex flex-col h-[calc(100vh-5rem)] relative">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-[80px]">
           {processedMessages.map((message) =>
             message.role === "assistant" ? (
               <div key={message.id} className="flex justify-start">
@@ -270,7 +270,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
         </div>
         <form
           onSubmit={handleSubmit}
-          className="border-t p-4 flex items-center space-x-4"
+          className="border-t p-4 flex items-center space-x-4 bg-background absolute bottom-0 left-0 right-0"
         >
           <input
             value={input}

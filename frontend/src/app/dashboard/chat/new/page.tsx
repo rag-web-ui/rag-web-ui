@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { Plus } from "lucide-react";
 
 interface KnowledgeBase {
   id: number;
@@ -19,6 +21,7 @@ export default function NewChatPage() {
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -29,6 +32,7 @@ export default function NewChatPage() {
     try {
       const data = await api.get("http://localhost:8000/api/knowledge-base");
       setKnowledgeBases(data);
+      setIsLoading(false);
     } catch (error) {
       console.error("Failed to fetch knowledge bases:", error);
       if (error instanceof ApiError) {
@@ -81,6 +85,29 @@ export default function NewChatPage() {
     );
   };
 
+  if (!isLoading && knowledgeBases.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto text-center py-16">
+          <h2 className="text-3xl font-bold tracking-tight mb-4">
+            No Knowledge Bases Found
+          </h2>
+          <p className="text-muted-foreground mb-8">
+            You need to create at least one knowledge base before starting a
+            chat.
+          </p>
+          <Link
+            href="/dashboard/knowledge"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Knowledge Base
+          </Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto space-y-8">
@@ -115,29 +142,39 @@ export default function NewChatPage() {
               Knowledge Bases
             </label>
             <div className="grid gap-4 md:grid-cols-2">
-              {knowledgeBases.map((kb) => (
-                <label
-                  key={kb.id}
-                  className={`flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${
-                    selectedKBs.includes(kb.id)
-                      ? "border-primary bg-primary/5"
-                      : "hover:border-primary/50"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="form-checkbox h-4 w-4 text-primary border-primary rounded focus:ring-primary"
-                    checked={selectedKBs.includes(kb.id)}
-                    onChange={() => toggleKnowledgeBase(kb.id)}
-                  />
-                  <div className="flex-1 space-y-1">
-                    <p className="font-medium">{kb.name}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {kb.description || "No description"}
-                    </p>
-                  </div>
-                </label>
-              ))}
+              {isLoading ? (
+                <div className="col-span-2 flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : (
+                knowledgeBases.map((kb) => (
+                  <label
+                    key={kb.id}
+                    className={`group flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                      selectedKBs.includes(kb.id)
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "hover:border-primary/50"
+                    }`}
+                  >
+                    <div className="relative flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        className="peer h-4 w-4 shrink-0 rounded-sm border border-primary text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        checked={selectedKBs.includes(kb.id)}
+                        onChange={() => toggleKnowledgeBase(kb.id)}
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="font-medium group-hover:text-primary transition-colors">
+                        {kb.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {kb.description || "No description provided"}
+                      </p>
+                    </div>
+                  </label>
+                ))
+              )}
             </div>
           </div>
 
