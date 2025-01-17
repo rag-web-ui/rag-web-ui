@@ -431,3 +431,28 @@ async def get_processing_tasks(
         }
         for task in tasks
     }
+
+@router.get("/{kb_id}/documents/{doc_id}", response_model=DocumentResponse)
+async def get_document(
+    *,
+    db: Session = Depends(get_db),
+    kb_id: int,
+    doc_id: int,
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """Get document details by ID."""
+    document = (
+        db.query(Document)
+        .join(KnowledgeBase)
+        .filter(
+            Document.id == doc_id,
+            Document.knowledge_base_id == kb_id,
+            KnowledgeBase.user_id == current_user.id
+        )
+        .first()
+    )
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    return document

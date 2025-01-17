@@ -7,11 +7,15 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 from app.core.config import settings
 from app.models.chat import Message
 from app.models.knowledge import KnowledgeBase, Document
+from langchain.globals import set_verbose, set_debug
+
+set_verbose(True)
+set_debug(True)
 
 async def generate_response(
     query: str,
@@ -127,10 +131,15 @@ async def generate_response(
             ("human", "{input}")
         ])
 
+        # 修改 create_stuff_documents_chain 来自定义 context 格式
+        document_prompt = PromptTemplate.from_template("\n\n- {page_content}\n\n")
+
         # Create QA chain
         question_answer_chain = create_stuff_documents_chain(
             llm,
-            qa_prompt
+            qa_prompt,
+            document_variable_name="context",
+            document_prompt=document_prompt
         )
 
         # Create retrieval chain
@@ -145,6 +154,9 @@ async def generate_response(
             if message["role"] == "user":
                 chat_history.append(HumanMessage(content=message["content"]))
             elif message["role"] == "assistant":
+                # if include __LLM_RESPONSE__, only use the last part
+                if "__LLM_RESPONSE__" in message["content"]:
+                    message["content"] = message["content"].split("__LLM_RESPONSE__")[-1]
                 chat_history.append(AIMessage(content=message["content"]))
 
         full_response = ""

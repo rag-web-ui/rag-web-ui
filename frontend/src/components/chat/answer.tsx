@@ -12,7 +12,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Divider } from "@/components/ui/divider";
 import Markdown from "react-markdown";
+import { api } from "@/lib/api";
+import { FileIcon } from "react-file-icon";
 
 interface Citation {
   id: number;
@@ -20,11 +23,71 @@ interface Citation {
   metadata: Record<string, any>;
 }
 
+interface KnowledgeBaseInfo {
+  name: string;
+}
+
+interface DocumentInfo {
+  file_name: string;
+  knowledge_base: KnowledgeBaseInfo;
+}
+
+interface CitationInfo {
+  knowledge_base: KnowledgeBaseInfo;
+  document: DocumentInfo;
+}
+
 export const Answer: FC<{
   markdown: string;
   citations?: Citation[];
 }> = ({ markdown, citations = [] }) => {
-  console.log("citations", citations);
+  const [citationInfoMap, setCitationInfoMap] = useState<
+    Record<string, CitationInfo>
+  >({});
+
+  useEffect(() => {
+    const fetchCitationInfo = async () => {
+      const infoMap: Record<string, CitationInfo> = {};
+
+      for (const citation of citations) {
+        const { kb_id, document_id } = citation.metadata;
+        if (!kb_id || !document_id) continue;
+
+        const key = `${kb_id}-${document_id}`;
+        if (infoMap[key]) continue;
+
+        try {
+          const [kb, doc] = await Promise.all([
+            api.get(`http://localhost:8000/api/knowledge-base/${kb_id}`),
+            api.get(
+              `http://localhost:8000/api/knowledge-base/${kb_id}/documents/${document_id}`
+            ),
+          ]);
+
+          infoMap[key] = {
+            knowledge_base: {
+              name: kb.name,
+            },
+            document: {
+              file_name: doc.file_name,
+              knowledge_base: {
+                name: kb.name,
+              },
+            },
+          };
+        } catch (error) {
+          console.error("Failed to fetch citation info:", error);
+        }
+      }
+
+      setCitationInfoMap(infoMap);
+    };
+
+    if (citations.length > 0) {
+      fetchCitationInfo();
+    }
+  }, [citations]);
+
   const CitationLink = useMemo(
     () =>
       (
@@ -37,13 +100,13 @@ export const Answer: FC<{
           : null;
 
         if (!citation) {
-          return <a {...props}>[{props.href}]</a>;
+          return <a>[{props.href}]</a>;
         }
 
-        console.log("citation", citation);
-        console.log("citations 1", citations[0]);
-        console.log("citations 2", citations[1]);
-        console.log("citations 3", citations[2]);
+        const citationInfo =
+          citationInfoMap[
+            `${citation.metadata.kb_id}-${citation.metadata.document_id}`
+          ];
 
         return (
           <Popover>
@@ -52,26 +115,50 @@ export const Answer: FC<{
                 {...props}
                 href="#"
                 role="button"
-                className="text-blue-600 underline cursor-pointer"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors relative"
               >
-                [{props.href}]
+                <span className="absolute -top-3 -right-1">[{props.href}]</span>
               </a>
             </PopoverTrigger>
             <PopoverContent
               side="top"
               align="start"
-              className="max-w-2xl w-[calc(100vw-100px)]"
+              className="max-w-2xl w-[calc(100vw-100px)] p-4 rounded-lg shadow-lg"
             >
-              <div className="text-sm">
-                <p className="text-gray-700">{citation.text}</p>
+              <div className="text-sm space-y-3">
+                {citationInfo && (
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-700 bg-gray-50 p-2 rounded">
+                    <div className="w-5 h-5 flex items-center justify-center">
+                      <FileIcon
+                        extension={
+                          citationInfo.document.file_name.split(".").pop() || ""
+                        }
+                        color="#E2E8F0"
+                        labelColor="#94A3B8"
+                      />
+                    </div>
+                    <span className="truncate">
+                      {citationInfo.knowledge_base.name} /{" "}
+                      {citationInfo.document.file_name}
+                    </span>
+                  </div>
+                )}
+                <Divider />
+                <p className="text-gray-700 leading-relaxed">{citation.text}</p>
+                <Divider />
                 {Object.keys(citation.metadata).length > 0 && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    {Object.entries(citation.metadata).map(([key, value]) => (
-                      <div key={key}>
-                        <span className="font-medium">{key}: </span>
-                        {String(value)}
-                      </div>
-                    ))}
+                  <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                    <div className="font-medium mb-2">Debug Info:</div>
+                    <div className="space-y-1">
+                      {Object.entries(citation.metadata).map(([key, value]) => (
+                        <div key={key} className="flex">
+                          <span className="font-medium min-w-[100px]">
+                            {key}:
+                          </span>
+                          <span className="text-gray-600">{String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -79,7 +166,7 @@ export const Answer: FC<{
           </Popover>
         );
       },
-    [citations]
+    [citations, citationInfoMap]
   );
 
   if (!markdown) {
