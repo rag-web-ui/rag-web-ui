@@ -150,16 +150,18 @@ alembic upgrade head
 
 ### Core Configuration
 
-| Parameter       | Description    | Default | Required |
-| --------------- | -------------- | ------- | -------- |
-| OPENAI_API_KEY  | OpenAI API Key | -       | ✅        |
-| SECRET_KEY      | JWT Secret     | -       | ✅        |
-| DATABASE_URL    | Database URL   | -       | ✅        |
-| MINIO_ROOT_USER | MinIO Username | minio   | ✅        |
-
-### Advanced Configuration
-
-For detailed configuration, please refer to the [Configuration Guide](docs/configuration.md)
+| Parameter                   | Description                | Default   | Required |
+| --------------------------- | -------------------------- | --------- | -------- |
+| MYSQL_SERVER                | MySQL Server Address       | localhost | ✅        |
+| MYSQL_USER                  | MySQL Username             | postgres  | ✅        |
+| MYSQL_PASSWORD              | MySQL Password             | postgres  | ✅        |
+| MYSQL_DATABASE              | MySQL Database Name        | ragwebui  | ✅        |
+| SECRET_KEY                  | JWT Secret Key             | -         | ✅        |
+| ACCESS_TOKEN_EXPIRE_MINUTES | JWT Token Expiry (minutes) | 30        | ✅        |
+| CHROMA_DB_HOST              | ChromaDB Server Address    | localhost | ✅        |
+| CHROMA_DB_PORT              | ChromaDB Port              | 8000      | ✅        |
+| OPENAI_API_KEY              | OpenAI API Key             | -         | ✅        |
+| OPENAI_API_BASE             | OpenAI API Proxy URL       | -         | ❌        |
 
 ## 🤝 Contributing
 

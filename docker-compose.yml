@@ -1,40 +1,40 @@
 version: "3.8"
 
 services:
-  # backend:
-  #   build: ./backend
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     - MYSQL_SERVER=db
-  #     - MYSQL_USER=ragwebui
-  #     - MYSQL_PASSWORD=ragwebui
-  #     - MYSQL_DATABASE=ragwebui
-  #     - SECRET_KEY=${SECRET_KEY}
-  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
-  #     - CHROMA_DB_HOST=chromadb
-  #     - CHROMA_DB_PORT=8000
-  #     - MINIO_ENDPOINT=minio:9000
-  #     - MINIO_ACCESS_KEY=minioadmin
-  #     - MINIO_SECRET_KEY=minioadmin
-  #     - MINIO_BUCKET_NAME=documents
-  #   volumes:
-  #     - ./backend:/app
-  #     - ./uploads:/app/uploads
-  #   depends_on:
-  #     - db
-  #     - chromadb
-  #     - minio
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MYSQL_SERVER=db
+      - MYSQL_USER=ragwebui
+      - MYSQL_PASSWORD=ragwebui
+      - MYSQL_DATABASE=ragwebui
+      - SECRET_KEY=${SECRET_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CHROMA_DB_HOST=chromadb
+      - CHROMA_DB_PORT=8000
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET_NAME=documents
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads
+    depends_on:
+      - db
+      - chromadb
+      - minio
 
-  # frontend:
-  #   build: ./frontend
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
-  #   environment:
-  #     - NEXT_PUBLIC_API_URL=http://localhost:8000
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
 
   db:
     image: mysql:8.0
