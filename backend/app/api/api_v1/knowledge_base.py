@@ -7,6 +7,7 @@ from langchain_openai import OpenAIEmbeddings
 from sqlalchemy import text
 import logging
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.models.user import User
@@ -27,6 +28,11 @@ from minio.error import MinioException
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+class TestRetrievalRequest(BaseModel):
+    query: str
+    kb_id: int
+    top_k: int
 
 @router.post("", response_model=KnowledgeBaseResponse)
 def create_knowledge_base(
@@ -456,3 +462,51 @@ async def get_document(
         raise HTTPException(status_code=404, detail="Document not found")
     
     return document
+
+@router.post("/test-retrieval")
+async def test_retrieval(
+    request: TestRetrievalRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Test retrieval quality for a given query against a knowledge base
+    """
+    try:
+        kb = db.query(KnowledgeBase).filter(
+            KnowledgeBase.id == request.kb_id,
+            KnowledgeBase.user_id == current_user.id
+        ).first()
+        
+        if not kb:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Knowledge base {request.kb_id} not found",
+            )
+        
+        embeddings = OpenAIEmbeddings(
+            openai_api_key=settings.OPENAI_API_KEY,
+            openai_api_base=settings.OPENAI_API_BASE
+        )
+        
+        vector_store = Chroma(
+            collection_name=f"kb_{request.kb_id}",
+            embedding_function=embeddings,
+            persist_directory="./chroma_db"
+        )
+        
+        results = vector_store.similarity_search_with_score(request.query, k=request.top_k)
+        
+        response = []
+        for doc, score in results:
+            response.append({
+                "content": doc.page_content,
+                "metadata": doc.metadata,
+                "score": float(score)
+            })
+            
+        return {"results": response}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
