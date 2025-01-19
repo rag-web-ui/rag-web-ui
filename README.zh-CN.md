@@ -175,6 +175,11 @@ alembic upgrade head
 - 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 提交规范
 
 
+## 补充
+
+本项目仅用于学习交流 RAG ，请勿用于商业用途，不具备在生产环境使用的条件，还在持续开发中。
+
+
 ## 📄 许可证
 
 本项目采用 [Apache-2.0 许可证](LICENSE)

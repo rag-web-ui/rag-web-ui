@@ -179,6 +179,10 @@ We welcome community contributions!
 
 This project is licensed under the [Apache-2.0 License](LICENSE)
 
+## Note
+
+This project is for learning and sharing RAG knowledge only. Please do not use it for commercial purposes. It is not ready for production use and is still under active development.
+
 ## 🙏 Acknowledgments
 
 Thanks to these open source projects:
