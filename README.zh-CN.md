@@ -178,8 +178,7 @@ alembic upgrade head
 
 - 遵循 [Python PEP 8](https://pep8.org/) 代码规范
 - 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 提交规范
-- 保持代码覆盖率在 80% 以上
-- 编写清晰的文档和注释
+
 
 ## 📄 许可证
 

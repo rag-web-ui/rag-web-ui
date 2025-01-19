@@ -179,8 +179,6 @@ We welcome community contributions!
 
 - Follow [Python PEP 8](https://pep8.org/) coding standards
 - Follow [Conventional Commits](https://www.conventionalcommits.org/)
-- Maintain code coverage above 80%
-- Write clear documentation and comments
 
 ## 📄 License
 
