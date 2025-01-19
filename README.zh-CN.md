@@ -34,11 +34,6 @@ RAG Web UI 是一个基于 RAG (Retrieval-Augmented Generation) 技术的智能�
 
 ## ✨ 特性
 
-- 🔐 **安全可靠**
-  - 完整的用户认证和权限管理系统
-  - 数据加密存储
-  - 可审计的操作日志
-
 - 📚 **智能文档管理**
   - 支持多种文档格式 (PDF、DOCX、Markdown、Text)
   - 文档自动分块和向量化

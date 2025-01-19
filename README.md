@@ -34,11 +34,6 @@ RAG Web UI is an intelligent dialogue system based on RAG (Retrieval-Augmented G
 
 ## ✨ Features
 
-- 🔐 **Secure & Reliable**
-  - Complete user authentication and permission management
-  - Encrypted data storage
-  - Auditable operation logs
-
 - 📚 **Intelligent Document Management**
   - Support for multiple document formats (PDF, DOCX, Markdown, Text)
   - Automatic document chunking and vectorization
