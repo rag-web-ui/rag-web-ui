@@ -71,7 +71,7 @@ export default function TestPage({ params }: { params: { id: string } }) {
         {
           query,
           kb_id: parseInt(params.id),
-          top_k: parseInt(topK)
+          top_k: parseInt(topK),
         }
       );
 
@@ -100,10 +100,10 @@ export default function TestPage({ params }: { params: { id: string } }) {
               知识库检索测试
             </h1>
             <p className="mt-4 text-lg text-muted-foreground">
-              <span className="font-semibold text-foreground">{knowledgeBase.name}</span>
-              {knowledgeBase.description && (
-                <span className="mx-2">•</span>
-              )}
+              <span className="font-semibold text-foreground">
+                {knowledgeBase.name}
+              </span>
+              {knowledgeBase.description && <span className="mx-2">•</span>}
               <span className="italic">{knowledgeBase.description}</span>
             </p>
           </div>
