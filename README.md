@@ -1,7 +1,8 @@
 <div align="center">
-  <h1>RAG Web UI</h1>
+  <img src="docs/images/Github-Cover.png" alt="RAG Web UI Demo" width="600">
+  <br />
   <p>
-    <strong>An Intelligent Dialogue System Based on RAG (Retrieval-Augmented Generation)</strong>
+    <strong>Knowledge Base Management Based on RAG (Retrieval-Augmented Generation)</strong>
   </p>
 
   <p>
@@ -24,8 +25,6 @@
     <span>English</span> |
     <a href="README.zh-CN.md">简体中文</a>
   </h4>
-
-  <img src="docs/images/demo.png" alt="RAG Web UI Demo" width="600">
 </div>
 
 ## 📖 Introduction
@@ -174,6 +173,12 @@ We welcome community contributions!
 
 - Follow [Python PEP 8](https://pep8.org/) coding standards
 - Follow [Conventional Commits](https://www.conventionalcommits.org/)
+
+
+### 🚧 Roadmap
+
+- [ ] Knowledge Base API Integration
+- [ ] Workflow By Natural Language
 
 ## 📄 License
 

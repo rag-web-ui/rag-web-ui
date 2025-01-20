@@ -1,7 +1,8 @@
 <div align="center">
-  <h1>RAG Web UI</h1>
+  <img src="docs/images/Github-Cover.png" alt="RAG Web UI Demo" width="600">
+  <br />
   <p>
-    <strong>基于 RAG (Retrieval-Augmented Generation) 的智能对话系统</strong>
+    <strong>基于 RAG (Retrieval-Augmented Generation) 的知识库管理</strong>
   </p>
 
   <p>
@@ -24,8 +25,6 @@
     <a href="README.md">English</a> |
     <span>简体中文</span>
   </h4>
-
-  <img src="docs/images/demo.png" alt="RAG Web UI Demo" width="600">
 </div>
 
 ## 📖 简介
@@ -173,6 +172,12 @@ alembic upgrade head
 
 - 遵循 [Python PEP 8](https://pep8.org/) 代码规范
 - 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 提交规范
+
+
+### 🚧 Roadmap
+
+- [ ] Knowledge Base API Integration
+- [ ] Workflow By Natural Language
 
 
 ## 补充
