@@ -11,9 +11,16 @@ services:
       - MYSQL_PASSWORD=ragwebui
       - MYSQL_DATABASE=ragwebui
       - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${OPENAI_API_BASE}
+      - OPENAI_MODEL=gpt-4
       - CHROMA_DB_HOST=chromadb
-      - CHROMA_DB_PORT=8000
+      - CHROMA_DB_PORT=8001
+      - VECTOR_STORE_TYPE=chroma
+      # For Qdrant, Remove the comment and run the following command to start the service
+      # - VECTOR_STORE_URL=http://localhost:6333
+      # - VECTOR_STORE_PREFER_GRPC=true
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
@@ -56,6 +63,17 @@ services:
     volumes:
       - chroma_data:/chroma/chroma
 
+  # For Qdrant, Remove the comment and run the following command to start the service
+  # qdrant:
+  #   image: qdrant/qdrant:latest
+  #   ports:
+  #     - "6333:6333" # REST API
+  #     - "6334:6334" # GRPC
+  #   volumes:
+  #     - qdrant_data:/qdrant/storage
+  #   environment:
+  #     - QDRANT_ALLOW_RECOVERY_MODE=true
+
   minio:
     image: minio/minio:latest
     ports:
@@ -72,3 +90,4 @@ volumes:
   mysql_data:
   chroma_data:
   minio_data:
+  # qdrant_data:

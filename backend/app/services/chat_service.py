@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.models.chat import Message
 from app.models.knowledge import KnowledgeBase, Document
 from langchain.globals import set_verbose, set_debug
+from app.services.vector_store import VectorStoreFactory
 
 set_verbose(True)
 set_debug(True)
@@ -61,12 +62,13 @@ async def generate_response(
         for kb in knowledge_bases:
             documents = db.query(Document).filter(Document.knowledge_base_id == kb.id).all()
             if documents:
-                vector_store = Chroma(
+                # Use the factory to create the appropriate vector store
+                vector_store = VectorStoreFactory.create(
+                    store_type=settings.VECTOR_STORE_TYPE,  # 'chroma' or other supported types
                     collection_name=f"kb_{kb.id}",
                     embedding_function=embeddings,
-                    persist_directory="./chroma_db"
                 )
-                print(f"Collection {f'kb_{kb.id}'} count:", vector_store._collection.count())
+                print(f"Collection {f'kb_{kb.id}'} count:", vector_store._store._collection.count())
                 vector_stores.append(vector_store)
         
         if not vector_stores:
@@ -84,7 +86,7 @@ async def generate_response(
         llm = ChatOpenAI(
             temperature=0,
             streaming=True,
-            model="gpt-4",
+            model=settings.OPENAI_MODEL,
             openai_api_key=settings.OPENAI_API_KEY,
             openai_api_base=settings.OPENAI_API_BASE
         )

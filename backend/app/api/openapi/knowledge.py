@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
+from app.services.vector_store import VectorStoreFactory
 
 from app import models
 from app.db.session import get_db
@@ -40,10 +41,10 @@ def query_knowledge_base(
             openai_api_base=settings.OPENAI_API_BASE
         )
         
-        vector_store = Chroma(
+        vector_store = VectorStoreFactory.create(
+            store_type=settings.VECTOR_STORE_TYPE,
             collection_name=f"kb_{knowledge_base_id}",
             embedding_function=embeddings,
-            persist_directory="./chroma_db"
         )
         
         results = vector_store.similarity_search_with_score(query, k=top_k)

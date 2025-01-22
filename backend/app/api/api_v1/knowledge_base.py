@@ -24,6 +24,7 @@ from app.services.document_processor import process_document_background, upload_
 from app.core.config import settings
 from app.core.minio import get_minio_client
 from minio.error import MinioException
+from app.services.vector_store import VectorStoreFactory
 
 router = APIRouter()
 
@@ -153,10 +154,11 @@ async def delete_knowledge_base(
             openai_api_key=settings.OPENAI_API_KEY,
             openai_api_base=settings.OPENAI_API_BASE
         )
-        vector_store = Chroma(
+
+        vector_store = VectorStoreFactory.create(
+            store_type=settings.VECTOR_STORE_TYPE,
             collection_name=f"kb_{kb_id}",
             embedding_function=embeddings,
-            persist_directory="./chroma_db"
         )
         
         # Clean up external resources first
@@ -175,7 +177,7 @@ async def delete_knowledge_base(
         
         # 2. Clean up vector store
         try:
-            vector_store._client.delete_collection(f"kb_{kb_id}")
+            vector_store._store.delete_collection(f"kb_{kb_id}")
             logger.info(f"Cleaned up vector store for knowledge base {kb_id}")
         except Exception as e:
             cleanup_errors.append(f"Failed to clean up vector store: {str(e)}")
@@ -490,10 +492,10 @@ async def test_retrieval(
             openai_api_base=settings.OPENAI_API_BASE
         )
         
-        vector_store = Chroma(
+        vector_store = VectorStoreFactory.create(
+            store_type=settings.VECTOR_STORE_TYPE,
             collection_name=f"kb_{request.kb_id}",
             embedding_function=embeddings,
-            persist_directory="./chroma_db"
         )
         
         results = vector_store.similarity_search_with_score(request.query, k=request.top_k)

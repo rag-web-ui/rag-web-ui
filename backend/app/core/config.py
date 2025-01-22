@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     # Vector DB settings
     CHROMA_DB_HOST: str = os.getenv("CHROMA_DB_HOST", "localhost")
-    CHROMA_DB_PORT: int = int(os.getenv("CHROMA_DB_PORT", "8000"))
+    CHROMA_DB_PORT: int = int(os.getenv("CHROMA_DB_PORT", "8001"))
 
     # MinIO
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "localhost:9000")
@@ -47,7 +47,15 @@ class Settings(BaseSettings):
     MINIO_BUCKET_NAME: str = os.getenv("MINIO_BUCKET_NAME", "documents")
 
     # OpenAI settings
-    OPENAI_API_BASE: str = os.getenv("OPENAI_API_BASE")
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY")
-
+    OPENAI_API_BASE: str = "https://api.openai.com/v1"
+    OPENAI_API_KEY: str
+    OPENAI_MODEL: str = "gpt-4"
+    
+    # Vector Store Settings
+    VECTOR_STORE_TYPE: str = "chroma"
+    
+    # For Qdrant
+    VECTOR_STORE_URL: str = "http://localhost:6333"
+    VECTOR_STORE_PREFER_GRPC: bool = True
+    
 settings = Settings() 

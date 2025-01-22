@@ -6,7 +6,7 @@
   </p>
 
   <p>
-    <a href="https://github.com/yourusername/rag-web-ui/blob/main/LICENSE"><img src="https://img.shields.io/github/license/yourusername/rag-web-ui" alt="License"></a>
+    <a href="https://github.com/rag-web-ui/rag-web-ui/blob/main/LICENSE"><img src="https://img.shields.io/github/license/rag-web-ui/rag-web-ui" alt="License"></a>
     <a href="#"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python"></a>
     <a href="#"><img src="https://img.shields.io/badge/node-%3E%3D18-green.svg" alt="Node"></a>
     <a href="#"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
@@ -47,8 +47,7 @@ RAG Web UI 是一个基于 RAG (Retrieval-Augmented Generation) 技术的智能�
 - 🎯 **合理架构**
   - 前后端分离设计
   - 分布式文件存储
-  - 高性能向量数据库
-
+  - 高性能向量数据库: 支持 ChromaDB、Qdrant，通过 Factory 模式，可以方便的切换向量数据库
 
 ## 🖼️ 截图
 
@@ -269,19 +268,26 @@ alembic upgrade head
 
 ### 核心配置项
 
-| 配置项                      | 说明                     | 默认值    | 必填 |
-| --------------------------- | ------------------------ | --------- | ---- |
-| MYSQL_SERVER                | MySQL 服务器地址         | localhost | ✅    |
-| MYSQL_USER                  | MySQL 用户名             | postgres  | ✅    |
-| MYSQL_PASSWORD              | MySQL 密码               | postgres  | ✅    |
-| MYSQL_DATABASE              | MySQL 数据库名           | ragwebui  | ✅    |
-| SECRET_KEY                  | JWT 加密密钥             | -         | ✅    |
-| ACCESS_TOKEN_EXPIRE_MINUTES | JWT token 过期时间(分钟) | 30        | ✅    |
-| CHROMA_DB_HOST              | ChromaDB 服务器地址      | localhost | ✅    |
-| CHROMA_DB_PORT              | ChromaDB 端口            | 8000      | ✅    |
-| OPENAI_API_KEY              | OpenAI API 密钥          | -         | ✅    |
-| OPENAI_API_BASE             | OpenAI API 代理 URL      | -         | ❌    |
-| NEXT_PUBLIC_API_URL         | Next.js API URL          | -         | ❌    |
+| 配置项                      | 说明                      | 默认值                | 必填 |
+| --------------------------- | ------------------------- | --------------------- | ---- |
+| MYSQL_SERVER                | MySQL 服务器地址          | localhost             | ✅    |
+| MYSQL_USER                  | MySQL 用户名              | postgres              | ✅    |
+| MYSQL_PASSWORD              | MySQL 密码                | postgres              | ✅    |
+| MYSQL_DATABASE              | MySQL 数据库名            | ragwebui              | ✅    |
+| SECRET_KEY                  | JWT 加密密钥              | -                     | ✅    |
+| ACCESS_TOKEN_EXPIRE_MINUTES | JWT token 过期时间(分钟)  | 30                    | ✅    |
+| CHROMA_DB_HOST              | ChromaDB 服务器地址       | localhost             | ✅    |
+| CHROMA_DB_PORT              | ChromaDB 端口             | 8001                  | ✅    |
+| OPENAI_API_KEY              | OpenAI API 密钥           | -                     | ✅    |
+| OPENAI_API_BASE             | OpenAI API 代理 URL       | -                     | ❌    |
+| OPENAI_MODEL                | OpenAI 模型名称           | gpt-4                 | ✅    |
+| MINIO_ENDPOINT              | MinIO 服务器地址          | localhost:9000        | ✅    |
+| MINIO_ACCESS_KEY            | MinIO 访问密钥            | minioadmin            | ✅    |
+| MINIO_SECRET_KEY            | MinIO 密钥                | minioadmin            | ✅    |
+| MINIO_BUCKET_NAME           | MinIO 存储桶名称          | documents             | ✅    |
+| VECTOR_STORE_TYPE           | 向量存储类型              | chroma                | ✅    |
+| VECTOR_STORE_URL            | Qdrant 向量存储 URL       | http://localhost:6333 | ❌    |
+| VECTOR_STORE_PREFER_GRPC    | Qdrant 优先使用 gRPC 连接 | true                  | ❌    |
 
 ## 🤝 贡献指南
 

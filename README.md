@@ -6,7 +6,7 @@
   </p>
 
   <p>
-    <a href="https://github.com/yourusername/rag-web-ui/blob/main/LICENSE"><img src="https://img.shields.io/github/license/yourusername/rag-web-ui" alt="License"></a>
+    <a href="https://github.com/rag-web-ui/rag-web-ui/blob/main/LICENSE"><img src="https://img.shields.io/github/license/rag-web-ui/rag-web-ui" alt="License"></a>
     <a href="#"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python"></a>
     <a href="#"><img src="https://img.shields.io/badge/node-%3E%3D18-green.svg" alt="Node"></a>
     <a href="#"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
@@ -45,8 +45,7 @@ RAG Web UI is an intelligent dialogue system based on RAG (Retrieval-Augmented G
 - 🎯 **Robust Architecture**
   - Frontend-backend separation design
   - Distributed file storage
-  - High-performance vector database
-
+  - High-performance vector database: Support for ChromaDB, Qdrant with easy switching through Factory pattern
 
 ## 🖼️ Screenshots
 
@@ -266,19 +265,26 @@ alembic upgrade head
 
 ### Core Configuration
 
-| Parameter                   | Description                | Default   | Required |
-| --------------------------- | -------------------------- | --------- | -------- |
-| MYSQL_SERVER                | MySQL Server Address       | localhost | ✅        |
-| MYSQL_USER                  | MySQL Username             | postgres  | ✅        |
-| MYSQL_PASSWORD              | MySQL Password             | postgres  | ✅        |
-| MYSQL_DATABASE              | MySQL Database Name        | ragwebui  | ✅        |
-| SECRET_KEY                  | JWT Secret Key             | -         | ✅        |
-| ACCESS_TOKEN_EXPIRE_MINUTES | JWT Token Expiry (minutes) | 30        | ✅        |
-| CHROMA_DB_HOST              | ChromaDB Server Address    | localhost | ✅        |
-| CHROMA_DB_PORT              | ChromaDB Port              | 8000      | ✅        |
-| OPENAI_API_KEY              | OpenAI API Key             | -         | ✅        |
-| OPENAI_API_BASE             | OpenAI API Proxy URL       | -         | ❌        |
-| NEXT_PUBLIC_API_URL         | Next.js API URL            | -         | ❌        |
+| Parameter                   | Description                       | Default               | Required |
+| --------------------------- | --------------------------------- | --------------------- | -------- |
+| MYSQL_SERVER                | MySQL Server Address              | localhost             | ✅        |
+| MYSQL_USER                  | MySQL Username                    | postgres              | ✅        |
+| MYSQL_PASSWORD              | MySQL Password                    | postgres              | ✅        |
+| MYSQL_DATABASE              | MySQL Database Name               | ragwebui              | ✅        |
+| SECRET_KEY                  | JWT Secret Key                    | -                     | ✅        |
+| ACCESS_TOKEN_EXPIRE_MINUTES | JWT Token Expiry (minutes)        | 30                    | ✅        |
+| CHROMA_DB_HOST              | ChromaDB Server Address           | localhost             | ✅        |
+| CHROMA_DB_PORT              | ChromaDB Port                     | 8001                  | ✅        |
+| OPENAI_API_KEY              | OpenAI API Key                    | -                     | ✅        |
+| OPENAI_API_BASE             | OpenAI API Proxy URL              | -                     | ❌        |
+| OPENAI_MODEL                | OpenAI Model Name                 | gpt-4                 | ✅        |
+| MINIO_ENDPOINT              | MinIO Server Address              | localhost:9000        | ✅        |
+| MINIO_ACCESS_KEY            | MinIO Access Key                  | minioadmin            | ✅        |
+| MINIO_SECRET_KEY            | MinIO Secret Key                  | minioadmin            | ✅        |
+| MINIO_BUCKET_NAME           | MinIO Bucket Name                 | documents             | ✅        |
+| VECTOR_STORE_TYPE           | Vector Store Type                 | chroma                | ✅        |
+| VECTOR_STORE_URL            | Vector Store URL For Qdrant       | http://localhost:6333 | ❌        |
+| VECTOR_STORE_PREFER_GRPC    | Prefer gRPC Connection For Qdrant | true                  | ❌        |
 
 ## 🤝 Contributing
 

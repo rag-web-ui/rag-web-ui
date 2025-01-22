@@ -30,6 +30,7 @@ from langchain_community.document_loaders import UnstructuredFileLoader
 from minio.error import MinioException
 from minio import Minio
 from minio.commonconfig import CopySource
+from app.services.vector_store import VectorStoreFactory
 
 class UploadResult(BaseModel):
     file_path: str
@@ -60,17 +61,11 @@ async def process_document(file_path: str, file_name: str, kb_id: int, document_
             openai_api_base=settings.OPENAI_API_BASE
         )
         
-        # Ensure ChromaDB directory exists
-        persist_directory = "./chroma_db"
-        os.makedirs(persist_directory, exist_ok=True)
-        logger.info(f"ChromaDB directory ensured: {persist_directory}")
-        
-        # Initialize vector store
-        logger.info(f"Initializing ChromaDB with collection: kb_{kb_id}")
-        vector_store = Chroma(
+        logger.info(f"Initializing vector store with collection: kb_{kb_id}")
+        vector_store = VectorStoreFactory.create(
+            store_type=settings.VECTOR_STORE_TYPE,
             collection_name=f"kb_{kb_id}",
             embedding_function=embeddings,
-            persist_directory=persist_directory
         )
         
         # Initialize chunk record manager
@@ -313,10 +308,10 @@ async def process_document_background(
                 openai_api_base=settings.OPENAI_API_BASE
             )
             
-            vector_store = Chroma(
+            vector_store = VectorStoreFactory.create(
+                store_type=settings.VECTOR_STORE_TYPE,
                 collection_name=f"kb_{kb_id}",
                 embedding_function=embeddings,
-                persist_directory="./chroma_db"
             )
             
             # 4. 将临时文件移动到永久目录
