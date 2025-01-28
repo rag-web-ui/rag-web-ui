@@ -16,13 +16,11 @@ from langchain_community.document_loaders import (
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LangchainDocument
 from pydantic import BaseModel
-from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.minio import get_minio_client
-from app.models.knowledge import ProcessingTask, Document, DocumentChunk
+from app.models.knowledge import ProcessingTask, Document, DocumentChunk, KnowledgeBase
 from app.services.chunk_record import ChunkRecord
 import uuid
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -31,6 +29,7 @@ from minio.error import MinioException
 from minio import Minio
 from minio.commonconfig import CopySource
 from app.services.vector_store import VectorStoreFactory
+from app.services.factory import ServiceFactory
 
 class UploadResult(BaseModel):
     file_path: str
@@ -54,12 +53,19 @@ async def process_document(file_path: str, file_name: str, kb_id: int, document_
     try:
         preview_result = await preview_document(file_path, chunk_size, chunk_overlap)
         
+        # Get knowledge base
+        db = next(get_db())
+        kb = db.query(KnowledgeBase).filter(KnowledgeBase.id == kb_id).first()
+        if not kb:
+            raise ValueError(f"Knowledge base {kb_id} not found")
+        
         # Initialize embeddings
-        logger.info("Initializing OpenAI embeddings...")
-        embeddings = OpenAIEmbeddings(
-            openai_api_key=settings.OPENAI_API_KEY,
-            openai_api_base=settings.OPENAI_API_BASE
+        logger.info("Initializing embeddings service...")
+        embeddings_service = ServiceFactory.create_embeddings_service(
+            kb.embeddings_service,
+            settings.get_service_config(kb.embeddings_service)
         )
+        embeddings = embeddings_service.get_embeddings()
         
         logger.info(f"Initializing vector store with collection: kb_{kb_id}")
         vector_store = VectorStoreFactory.create(
@@ -76,68 +82,40 @@ async def process_document(file_path: str, file_name: str, kb_id: int, document_
         
         # Prepare new chunks
         new_chunks = []
-        current_hashes = set()
-        documents_to_update = []
+        chunk_hashes = set()
         
         for chunk in preview_result.chunks:
-            # Calculate chunk hash
-            chunk_hash = hashlib.sha256(
-                (chunk.content + str(chunk.metadata)).encode()
-            ).hexdigest()
-            current_hashes.add(chunk_hash)
+            chunk_text = chunk.content
+            chunk_hash = hashlib.sha256(chunk_text.encode()).hexdigest()
             
-            # Skip if chunk hasn't changed
-            if chunk_hash in existing_hashes:
-                continue
-            
-            # Create unique ID for the chunk
-            chunk_id = hashlib.sha256(
-                f"{kb_id}:{file_name}:{chunk_hash}".encode()
-            ).hexdigest()
-            
-            # Prepare chunk record
-            # Prepare metadata
-            metadata = {
-                **chunk.metadata,
-                "chunk_id": chunk_id,
-                "file_name": file_name,
-                "kb_id": kb_id,
-                "document_id": document_id
-            }
-            
-            new_chunks.append({
-                "id": chunk_id,
-                "kb_id": kb_id,
-                "document_id": document_id,
-                "file_name": file_name,
-                "metadata": metadata,
-                "hash": chunk_hash
-            })
-            
-            # Prepare document for vector store
-            doc = LangchainDocument(
-                page_content=chunk.content,
-                metadata=metadata
-            )
-            documents_to_update.append(doc)
+            if chunk_hash not in existing_hashes:
+                new_chunks.append(
+                    LangchainDocument(
+                        page_content=chunk_text,
+                        metadata={
+                            "source": file_name,
+                            "chunk_hash": chunk_hash,
+                            **chunk.metadata
+                        }
+                    )
+                )
+                chunk_hashes.add(chunk_hash)
         
-        # Add new chunks to database and vector store
         if new_chunks:
-            logger.info(f"Adding {len(new_chunks)} new/updated chunks")
-            chunk_manager.add_chunks(new_chunks)
-            vector_store.add_documents(documents_to_update)
-        
-        # Delete removed chunks
-        chunks_to_delete = chunk_manager.get_deleted_chunks(current_hashes, file_name)
-        if chunks_to_delete:
-            logger.info(f"Removing {len(chunks_to_delete)} deleted chunks")
-            chunk_manager.delete_chunks(chunks_to_delete)
-            vector_store.delete(chunks_to_delete)
-        
-        logger.info("Document processing completed successfully")
-        
+            logger.info(f"Adding {len(new_chunks)} new chunks to vector store")
+            vector_store.add_documents(new_chunks)
+            
+            # Record new chunk hashes
+            for chunk_hash in chunk_hashes:
+                chunk_manager.add_chunk(file_name, chunk_hash)
+            
+            logger.info("Successfully added chunks to vector store")
+        else:
+            logger.info("No new chunks to add")
+            
     except Exception as e:
         logger.error(f"Error processing document: {str(e)}")
+        logger.error(traceback.format_exc())
         raise
 
 async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
@@ -176,7 +154,6 @@ async def upload_document(file: UploadFile, kb_id: int) -> UploadResult:
         raise
         
     return UploadResult(
-        file_path=object_path,
         file_name=file_name,
         file_size=file_size,
         content_type=content_type,
@@ -257,6 +234,11 @@ async def process_document_background(
         task.status = "processing"
         db.commit()
         
+        # 获取知识库信息
+        kb = db.query(KnowledgeBase).get(kb_id)
+        if not kb:
+            raise Exception(f"Knowledge base {kb_id} not found")
+        
         # 1. 从临时目录下载文件
         minio_client = get_minio_client()
         try:
@@ -272,7 +254,7 @@ async def process_document_background(
             error_msg = f"Failed to download temp file: {str(e)}"
             logger.error(f"Task {task_id}: {error_msg}")
             raise Exception(error_msg)
-        
+            
         try:
             # 2. 加载和分块文档
             _, ext = os.path.splitext(file_name)
@@ -303,10 +285,11 @@ async def process_document_background(
             
             # 3. 创建向量存储
             logger.info(f"Task {task_id}: Initializing vector store")
-            embeddings = OpenAIEmbeddings(
-                openai_api_key=settings.OPENAI_API_KEY,
-                openai_api_base=settings.OPENAI_API_BASE
+            embeddings_service = ServiceFactory.create_embeddings_service(
+                kb.embeddings_service,
+                settings.get_service_config(kb.embeddings_service)
             )
+            embeddings = embeddings_service.get_embeddings()
             
             vector_store = VectorStoreFactory.create(
                 store_type=settings.VECTOR_STORE_TYPE,
@@ -343,7 +326,7 @@ async def process_document_background(
             logger.info(f"Task {task_id}: Creating document record")
             document = Document(
                 file_name=file_name,
-                file_path=permanent_path,
+                file_path=permanent_path,  # 使用永久路径
                 file_hash=task.document_upload.file_hash,
                 file_size=task.document_upload.file_size,
                 content_type=task.document_upload.content_type,

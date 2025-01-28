@@ -46,7 +46,8 @@ def create_knowledge_base(
     kb = KnowledgeBase(
         name=kb_in.name,
         description=kb_in.description,
-        user_id=current_user.id
+        user_id=current_user.id,
+        embeddings_service=kb_in.embeddings_service
     )
     db.add(kb)
     db.commit()
@@ -123,7 +124,7 @@ def update_knowledge_base(
     db.refresh(kb)
     return kb
 
-@router.delete("/{kb_id}")
+@router.delete("/{kb_id}", response_model=Dict[str, Any])
 async def delete_knowledge_base(
     *,
     db: Session = Depends(get_db),
@@ -133,40 +134,32 @@ async def delete_knowledge_base(
     """Delete knowledge base and all associated resources."""
     logger = logging.getLogger(__name__)
     
-    kb = (
-        db.query(KnowledgeBase)
-        .filter(
-            KnowledgeBase.id == kb_id,
-            KnowledgeBase.user_id == current_user.id
-        )
-        .first()
-    )
+    kb = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.user_id == current_user.id
+    ).first()
+    
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     
     try:
-        # Get all document file paths before deletion
-        document_paths = [doc.file_path for doc in kb.documents]
-        
         # Initialize services
         minio_client = get_minio_client()
         embeddings = OpenAIEmbeddings(
             openai_api_key=settings.OPENAI_API_KEY,
             openai_api_base=settings.OPENAI_API_BASE
         )
-
+        
         vector_store = VectorStoreFactory.create(
             store_type=settings.VECTOR_STORE_TYPE,
             collection_name=f"kb_{kb_id}",
             embedding_function=embeddings,
         )
         
-        # Clean up external resources first
         cleanup_errors = []
         
-        # 1. Clean up MinIO files
+        # Clean up MinIO files
         try:
-            # Delete all objects with prefix kb_{kb_id}/
             objects = minio_client.list_objects(settings.MINIO_BUCKET_NAME, prefix=f"kb_{kb_id}/")
             for obj in objects:
                 minio_client.remove_object(settings.MINIO_BUCKET_NAME, obj.object_name)
@@ -175,7 +168,7 @@ async def delete_knowledge_base(
             cleanup_errors.append(f"Failed to clean up MinIO files: {str(e)}")
             logger.error(f"MinIO cleanup error for kb {kb_id}: {str(e)}")
         
-        # 2. Clean up vector store
+        # Clean up vector store
         try:
             vector_store._store.delete_collection(f"kb_{kb_id}")
             logger.info(f"Cleaned up vector store for knowledge base {kb_id}")
@@ -183,11 +176,10 @@ async def delete_knowledge_base(
             cleanup_errors.append(f"Failed to clean up vector store: {str(e)}")
             logger.error(f"Vector store cleanup error for kb {kb_id}: {str(e)}")
         
-        # Finally, delete database records in a single transaction
+        # Delete database records
         db.delete(kb)
         db.commit()
         
-        # Report any cleanup errors in the response
         if cleanup_errors:
             return {
                 "message": "Knowledge base deleted with cleanup warnings",
@@ -195,6 +187,7 @@ async def delete_knowledge_base(
             }
         
         return {"message": "Knowledge base and all associated resources deleted successfully"}
+        
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to delete knowledge base {kb_id}: {str(e)}")

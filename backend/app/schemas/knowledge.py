@@ -1,16 +1,19 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel
+from app.models.knowledge import EmbeddingsServiceType
 
 class KnowledgeBaseBase(BaseModel):
     name: str
     description: Optional[str] = None
+    embeddings_service: EmbeddingsServiceType = EmbeddingsServiceType.OPENAI
 
 class KnowledgeBaseCreate(KnowledgeBaseBase):
     pass
 
 class KnowledgeBaseUpdate(KnowledgeBaseBase):
-    pass
+    name: Optional[str] = None
+    embeddings_service: Optional[EmbeddingsServiceType] = None
 
 class DocumentBase(BaseModel):
     file_name: str
@@ -80,6 +83,5 @@ class KnowledgeBaseResponse(KnowledgeBaseBase):
         from_attributes = True
 
 class PreviewRequest(BaseModel):
-    document_ids: List[int]
     chunk_size: int = 1000
     chunk_overlap: int = 200 

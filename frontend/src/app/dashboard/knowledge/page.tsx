@@ -14,6 +14,7 @@ interface KnowledgeBase {
   description: string;
   documents: Document[];
   created_at: string;
+  embeddings_service: string;
 }
 interface Document {
   id: number;
@@ -111,7 +112,10 @@ export default function KnowledgeBasePage() {
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
                     {kb.documents.length} documents •{" "}
-                    {new Date(kb.created_at).toLocaleDateString()}
+                    {new Date(kb.created_at).toLocaleDateString()} •{" "}
+                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-primary/10 text-primary">
+                      {kb.embeddings_service === "openai" ? "OpenAI" : "Ollama"}
+                    </span>
                   </p>
                 </div>
 

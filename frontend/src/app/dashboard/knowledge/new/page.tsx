@@ -29,10 +29,12 @@ export default function NewKnowledgeBasePage() {
       const formData = new FormData(e.currentTarget);
       const name = formData.get("name") as string;
       const description = formData.get("description") as string;
+      const embeddings_service = formData.get("embeddings_service") as string;
 
       const data = await api.post("/api/knowledge-base", {
         name,
         description,
+        embeddings_service,
       });
 
       router.push(`/dashboard/knowledge/${data.id}`);
@@ -96,6 +98,27 @@ export default function NewKnowledgeBasePage() {
               className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="Enter knowledge base description"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label
+              htmlFor="embeddings_service"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Embeddings Service
+            </label>
+            <select
+              id="embeddings_service"
+              name="embeddings_service"
+              defaultValue="openai"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="openai">OpenAI</option>
+              <option value="ollama">Ollama</option>
+            </select>
+            <p className="text-sm text-muted-foreground mt-1">
+              选择用于生成文档嵌入的服务。OpenAI 提供更好的质量但需要 API key，Ollama 可以本地运行但质量可能较低。
+            </p>
           </div>
 
           {error && <div className="text-sm text-red-500">{error}</div>}
