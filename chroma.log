@@ -52,3 +52,10 @@
 [32mINFO[0m:     [29-01-2025 00:41:54] ::1:54879 - "GET /api/v2/pre-flight-checks HTTP/1.1" 200
 [36mDEBUG[0m:    [29-01-2025 00:41:54] Starting component PersistentLocalHnswSegment
 [32mINFO[0m:     [29-01-2025 00:41:54] ::1:54879 - "POST /api/v2/tenants/default_tenant/databases/default_database/collections/64e44e06-a485-4e6a-a64c-ba849fde0d0c/upsert HTTP/1.1" 200
+[32mINFO[0m:     [29-01-2025 00:47:36] ::1:55440 - "GET /api/v2/auth/identity HTTP/1.1" 200
+[32mINFO[0m:     [29-01-2025 00:47:36] ::1:55441 - "GET /api/v2/tenants/default_tenant HTTP/1.1" 200
+[32mINFO[0m:     [29-01-2025 00:47:36] ::1:55441 - "GET /api/v2/tenants/default_tenant/databases/default_database HTTP/1.1" 200
+[32mINFO[0m:     [29-01-2025 00:47:36] ::1:55440 - "POST /api/v2/tenants/default_tenant/databases/default_database/collections HTTP/1.1" 200
+[32mINFO[0m:     [29-01-2025 00:47:39] ::1:55440 - "GET /api/v2/pre-flight-checks HTTP/1.1" 200
+[36mDEBUG[0m:    [29-01-2025 00:47:39] Starting component PersistentLocalHnswSegment
+[32mINFO[0m:     [29-01-2025 00:47:39] ::1:55440 - "POST /api/v2/tenants/default_tenant/databases/default_database/collections/f8c81268-addc-4f13-be4b-b6694498bd87/upsert HTTP/1.1" 200
