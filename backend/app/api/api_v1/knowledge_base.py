@@ -42,7 +42,9 @@ def create_knowledge_base(
     kb_in: KnowledgeBaseCreate,
     current_user: User = Depends(get_current_user)
 ) -> Any:
-    """Create new knowledge base."""
+    """
+    Create new knowledge base.
+    """
     kb = KnowledgeBase(
         name=kb_in.name,
         description=kb_in.description,
@@ -51,6 +53,7 @@ def create_knowledge_base(
     db.add(kb)
     db.commit()
     db.refresh(kb)
+    logger.info(f"Knowledge base created: {kb.name} for user {current_user.id}")
     return kb
 
 @router.get("", response_model=List[KnowledgeBaseResponse])
@@ -60,7 +63,9 @@ def get_knowledge_bases(
     skip: int = 0,
     limit: int = 100
 ) -> Any:
-    """Retrieve knowledge bases."""
+    """
+    Retrieve knowledge bases.
+    """
     knowledge_bases = (
         db.query(KnowledgeBase)
         .filter(KnowledgeBase.user_id == current_user.id)
@@ -77,7 +82,9 @@ def get_knowledge_base(
     kb_id: int,
     current_user: User = Depends(get_current_user)
 ) -> Any:
-    """Get knowledge base by ID."""
+    """
+    Get knowledge base by ID.
+    """
     from sqlalchemy.orm import joinedload
     
     kb = (
@@ -106,7 +113,9 @@ def update_knowledge_base(
     kb_in: KnowledgeBaseUpdate,
     current_user: User = Depends(get_current_user)
 ) -> Any:
-    """Update knowledge base."""
+    """
+    Update knowledge base.
+    """
     kb = db.query(KnowledgeBase).filter(
         KnowledgeBase.id == kb_id,
         KnowledgeBase.user_id == current_user.id
@@ -121,6 +130,7 @@ def update_knowledge_base(
     db.add(kb)
     db.commit()
     db.refresh(kb)
+    logger.info(f"Knowledge base updated: {kb.name} for user {current_user.id}")
     return kb
 
 @router.delete("/{kb_id}")
@@ -130,7 +140,9 @@ async def delete_knowledge_base(
     kb_id: int,
     current_user: User = Depends(get_current_user)
 ) -> Any:
-    """Delete knowledge base and all associated resources."""
+    """
+    Delete knowledge base and all associated resources.
+    """
     logger = logging.getLogger(__name__)
     
     kb = (
@@ -208,7 +220,9 @@ async def upload_kb_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload multiple documents to MinIO"""
+    """
+    Upload multiple documents to MinIO.
+    """
     kb = db.query(KnowledgeBase).filter(
         KnowledgeBase.id == kb_id,
         KnowledgeBase.user_id == current_user.id
@@ -288,7 +302,9 @@ async def preview_kb_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> Dict[int, PreviewResult]:
-    """Preview multiple documents' chunks"""
+    """
+    Preview multiple documents' chunks.
+    """
     results = {}
     for doc_id in preview_request.document_ids:
         # 先尝试在 Document 表中查找
@@ -331,7 +347,9 @@ async def process_kb_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Process multiple documents asynchronously"""
+    """
+    Process multiple documents asynchronously.
+    """
     kb = db.query(KnowledgeBase).filter(
         KnowledgeBase.id == kb_id,
         KnowledgeBase.user_id == current_user.id
@@ -386,7 +404,9 @@ async def cleanup_temp_files(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Clean up expired temporary files"""
+    """
+    Clean up expired temporary files.
+    """
     # 找出过期的上传记录（24小时前）
     expired_time = datetime.utcnow() - timedelta(hours=24)
     expired_uploads = db.query(DocumentUpload).filter(
@@ -419,7 +439,9 @@ async def get_processing_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get status of multiple processing tasks"""
+    """
+    Get status of multiple processing tasks.
+    """
     # Convert comma-separated string to list of integers
     task_id_list = [int(id.strip()) for id in task_ids.split(",")]
     
@@ -448,7 +470,9 @@ async def get_document(
     doc_id: int,
     current_user: User = Depends(get_current_user)
 ) -> Any:
-    """Get document details by ID."""
+    """
+    Get document details by ID.
+    """
     document = (
         db.query(Document)
         .join(KnowledgeBase)
@@ -473,7 +497,7 @@ async def test_retrieval(
     current_user: User = Depends(get_current_user)
 ) -> Any:
     """
-    Test retrieval quality for a given query against a knowledge base
+    Test retrieval quality for a given query against a knowledge base.
     """
     try:
         kb = db.query(KnowledgeBase).filter(

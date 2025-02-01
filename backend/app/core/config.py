@@ -6,9 +6,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "RAG Web UI"
-    VERSION: str = "0.1.0"
-    API_V1_STR: str = "/api"
+    PROJECT_NAME: str = "RAG Web UI"  # Project name
+    VERSION: str = "0.1.0"  # Project version
+    API_V1_STR: str = "/api"  # API version string
     
     # CORS settings
     BACKEND_CORS_ORIGINS: List[str] = [
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 
     # OpenAI settings
     OPENAI_API_BASE: str = "https://api.openai.com/v1"
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL: str = "gpt-4"
     
     # Vector Store Settings
@@ -58,4 +58,4 @@ class Settings(BaseSettings):
     VECTOR_STORE_URL: str = "http://localhost:6333"
     VECTOR_STORE_PREFER_GRPC: bool = True
     
-settings = Settings() 
+settings = Settings()
