@@ -3,7 +3,6 @@ from typing import List, Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
 from sqlalchemy import text
 import logging
 from datetime import datetime, timedelta
@@ -25,6 +24,7 @@ from app.core.config import settings
 from app.core.minio import get_minio_client
 from minio.error import MinioException
 from app.services.vector_store import VectorStoreFactory
+from app.services.embedding.embedding_factory import EmbeddingsFactory
 
 router = APIRouter()
 
@@ -162,10 +162,7 @@ async def delete_knowledge_base(
         
         # Initialize services
         minio_client = get_minio_client()
-        embeddings = OpenAIEmbeddings(
-            openai_api_key=settings.OPENAI_API_KEY,
-            openai_api_base=settings.OPENAI_API_BASE
-        )
+        embeddings = EmbeddingsFactory.create()
 
         vector_store = VectorStoreFactory.create(
             store_type=settings.VECTOR_STORE_TYPE,
@@ -511,10 +508,7 @@ async def test_retrieval(
                 detail=f"Knowledge base {request.kb_id} not found",
             )
         
-        embeddings = OpenAIEmbeddings(
-            openai_api_key=settings.OPENAI_API_KEY,
-            openai_api_base=settings.OPENAI_API_BASE
-        )
+        embeddings = EmbeddingsFactory.create()
         
         vector_store = VectorStoreFactory.create(
             store_type=settings.VECTOR_STORE_TYPE,

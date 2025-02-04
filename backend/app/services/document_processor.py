@@ -16,8 +16,6 @@ from langchain_community.document_loaders import (
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LangchainDocument
 from pydantic import BaseModel
-from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -31,6 +29,7 @@ from minio.error import MinioException
 from minio import Minio
 from minio.commonconfig import CopySource
 from app.services.vector_store import VectorStoreFactory
+from app.services.embedding.embedding_factory import EmbeddingsFactory
 
 class UploadResult(BaseModel):
     file_path: str
@@ -56,10 +55,7 @@ async def process_document(file_path: str, file_name: str, kb_id: int, document_
         
         # Initialize embeddings
         logger.info("Initializing OpenAI embeddings...")
-        embeddings = OpenAIEmbeddings(
-            openai_api_key=settings.OPENAI_API_KEY,
-            openai_api_base=settings.OPENAI_API_BASE
-        )
+        embeddings = EmbeddingsFactory.create()
         
         logger.info(f"Initializing vector store with collection: kb_{kb_id}")
         vector_store = VectorStoreFactory.create(
@@ -303,10 +299,7 @@ async def process_document_background(
             
             # 3. 创建向量存储
             logger.info(f"Task {task_id}: Initializing vector store")
-            embeddings = OpenAIEmbeddings(
-                openai_api_key=settings.OPENAI_API_KEY,
-                openai_api_base=settings.OPENAI_API_BASE
-            )
+            embeddings = EmbeddingsFactory.create()
             
             vector_store = VectorStoreFactory.create(
                 store_type=settings.VECTOR_STORE_TYPE,

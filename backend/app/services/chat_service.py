@@ -2,8 +2,6 @@ import json
 import base64
 from typing import List, AsyncGenerator
 from sqlalchemy.orm import Session
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -14,6 +12,7 @@ from app.models.chat import Message
 from app.models.knowledge import KnowledgeBase, Document
 from langchain.globals import set_verbose, set_debug
 from app.services.vector_store import VectorStoreFactory
+from app.services.embedding.embedding_factory import EmbeddingsFactory
 
 set_verbose(True)
 set_debug(True)
@@ -52,10 +51,7 @@ async def generate_response(
         )
         
         # Initialize embeddings
-        embeddings = OpenAIEmbeddings(
-            openai_api_key=settings.OPENAI_API_KEY,
-            openai_api_base=settings.OPENAI_API_BASE
-        )
+        embeddings = EmbeddingsFactory.create()
         
         # Create a vector store for each knowledge base
         vector_stores = []

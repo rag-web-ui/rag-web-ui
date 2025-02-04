@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
 
+    # Embeddings settings
+    EMBEDDINGS_PROVIDER: str = os.getenv("EMBEDDINGS_PROVIDER", "openai")
+
     # Vector DB settings
     CHROMA_DB_HOST: str = os.getenv("CHROMA_DB_HOST", "localhost")
     CHROMA_DB_PORT: int = int(os.getenv("CHROMA_DB_PORT", "8001"))
