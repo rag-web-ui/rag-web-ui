@@ -188,10 +188,16 @@ cd rag-web-ui
 ```
 
 2. Configure environment variables
-```bash
-cp backend/.env.example backend/.env
-# Edit .env file with necessary configurations
-```
+
+Configure the docker-compose.yml file with your environment variables, especially:
+
+- `SECRET_KEY`: Your JWT secret key for authentication
+- `OPENAI_API_KEY`: Your OpenAI API key for LLM services
+- `OPENAI_API_BASE`: OpenAI API base URL (default is https://api.openai.com/v1)
+- `EMBEDDINGS_PROVIDER`: Embeddings service provider (default is openai)
+- `OPENAI_MODEL`: OpenAI model to use (default is gpt-4)
+
+You can find the full configuration options in the docker-compose.yml file.
 
 3. Start services(development server)
 ```bash

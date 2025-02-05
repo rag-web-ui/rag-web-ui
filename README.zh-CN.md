@@ -191,12 +191,17 @@ graph TB
 git clone https://github.com/rag-web-ui/rag-web-ui.git
 cd rag-web-ui
 ```
-
 2. 配置环境变量
-```bash
-cp backend/.env.example backend/.env
-# 编辑 .env 文件，填写必要的配置项 （见下文）
-```
+
+配置 docker-compose.yml 文件中的环境变量，特别是以下几项：
+
+- `SECRET_KEY`: 用于身份验证的 JWT 密钥
+- `OPENAI_API_KEY`: 用于 LLM 服务的 OpenAI API 密钥
+- `OPENAI_API_BASE`: OpenAI API 基础 URL (默认为 https://api.openai.com/v1)
+- `EMBEDDINGS_PROVIDER`: 嵌入服务提供商 (默认为 openai)
+- `OPENAI_MODEL`: 使用的 OpenAI 模型 (默认为 gpt-4)
+
+您可以在 docker-compose.yml 文件中找到完整的配置选项。
 
 3. 启动服务(开发环境的配置)
 ```bash

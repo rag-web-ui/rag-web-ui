@@ -12,11 +12,14 @@ services:
       - MYSQL_DATABASE=ragwebui
       - SECRET_KEY=${SECRET_KEY}
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      # embeddings provider, if set to openai, use the openai api key and base url
+      - EMBEDDINGS_PROVIDER=${EMBEDDINGS_PROVIDER}
+      # remember to set the openai api key and base url
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_API_BASE=${OPENAI_API_BASE}
       - OPENAI_MODEL=gpt-4
       - CHROMA_DB_HOST=chromadb
-      - CHROMA_DB_PORT=8001
+      - CHROMA_DB_PORT=8000
       - VECTOR_STORE_TYPE=chroma
       # For Qdrant, Remove the comment and run the following command to start the service
       # - VECTOR_STORE_URL=http://localhost:6333
@@ -25,9 +28,12 @@ services:
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_BUCKET_NAME=documents
+      - TZ=Asia/Shanghai
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads
+    networks:
+      - app_network
     depends_on:
       - db
       - chromadb
@@ -42,6 +48,8 @@ services:
       - /app/node_modules
     environment:
       - NEXT_PUBLIC_API_URL=
+    networks:
+      - app_network
 
   db:
     image: mysql:8.0
@@ -51,10 +59,13 @@ services:
       - MYSQL_DATABASE=ragwebui
       - MYSQL_USER=ragwebui
       - MYSQL_PASSWORD=ragwebui
+      - TZ=Asia/Shanghai
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - app_network
 
   chromadb:
     image: chromadb/chroma:latest
@@ -62,6 +73,8 @@ services:
       - "8001:8000"
     volumes:
       - chroma_data:/chroma/chroma
+    networks:
+      - app_network
 
   # For Qdrant, Remove the comment and run the following command to start the service
   # qdrant:
@@ -73,6 +86,8 @@ services:
   #     - qdrant_data:/qdrant/storage
   #   environment:
   #     - QDRANT_ALLOW_RECOVERY_MODE=true
+  #   networks:
+  #     - app_network
 
   minio:
     image: minio/minio:latest
@@ -85,9 +100,15 @@ services:
     volumes:
       - minio_data:/data
     command: server --console-address ":9001" /data
+    networks:
+      - app_network
 
 volumes:
   mysql_data:
   chroma_data:
   minio_data:
   # qdrant_data:
+
+networks:
+  app_network:
+    driver: bridge

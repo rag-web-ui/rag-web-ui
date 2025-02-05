@@ -38,9 +38,6 @@ dependencies:
   '@radix-ui/react-toast':
     specifier: ^1.2.4
     version: 1.2.4(@types/react-dom@18.3.5)(@types/react@18.3.18)(react-dom@18.3.1)(react@18.3.1)
-  '@tailwindcss/line-clamp':
-    specifier: ^0.4.4
-    version: 0.4.4(tailwindcss@3.4.17)
   ai:
     specifier: ^4.0.1
     version: 4.0.33(react@18.3.1)(zod@3.24.1)
@@ -94,6 +91,9 @@ devDependencies:
   '@radix-ui/react-select':
     specifier: ^2.1.4
     version: 2.1.4(@types/react-dom@18.3.5)(@types/react@18.3.18)(react-dom@18.3.1)(react@18.3.1)
+  '@tailwindcss/line-clamp':
+    specifier: ^0.4.4
+    version: 0.4.4(tailwindcss@3.4.17)
   '@types/node':
     specifier: ^20
     version: 20.17.12
@@ -1476,7 +1476,7 @@ packages:
       tailwindcss: '>=2.0.0 || >=3.0.0 || >=3.0.0-alpha.1'
     dependencies:
       tailwindcss: 3.4.17
-    dev: false
+    dev: true
 
   /@ts-morph/common@0.19.0:
     resolution: {integrity: sha512-Unz/WHmd4pGax91rdIKWi51wnVUW11QttMEPpBiBgIewnc9UQIX7UDLxr5vRlqeByXCwhkF6VabSsI0raWcyAQ==}
