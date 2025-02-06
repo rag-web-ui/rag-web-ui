@@ -193,15 +193,10 @@ cd rag-web-ui
 ```
 2. 配置环境变量
 
-配置 docker-compose.yml 文件中的环境变量，特别是以下几项：
-
-- `SECRET_KEY`: 用于身份验证的 JWT 密钥
-- `OPENAI_API_KEY`: 用于 LLM 服务的 OpenAI API 密钥
-- `OPENAI_API_BASE`: OpenAI API 基础 URL (默认为 https://api.openai.com/v1)
-- `EMBEDDINGS_PROVIDER`: 嵌入服务提供商 (默认为 openai)
-- `OPENAI_MODEL`: 使用的 OpenAI 模型 (默认为 gpt-4)
-
-您可以在 docker-compose.yml 文件中找到完整的配置选项。
+```bash
+# 注意配置文件中的环境
+cp .env.example .env
+```
 
 3. 启动服务(开发环境的配置)
 ```bash
@@ -275,27 +270,61 @@ alembic upgrade head
 
 ### 核心配置项
 
-| 配置项                      | 说明                                                                | 默认值                | 必填 |
-| --------------------------- | ------------------------------------------------------------------- | --------------------- | ---- |
-| MYSQL_SERVER                | MySQL 服务器地址                                                    | localhost             | ✅    |
-| MYSQL_USER                  | MySQL 用户名                                                        | postgres              | ✅    |
-| MYSQL_PASSWORD              | MySQL 密码                                                          | postgres              | ✅    |
-| MYSQL_DATABASE              | MySQL 数据库名                                                      | ragwebui              | ✅    |
-| SECRET_KEY                  | JWT 加密密钥                                                        | -                     | ✅    |
-| ACCESS_TOKEN_EXPIRE_MINUTES | JWT token 过期时间(分钟)                                            | 30                    | ✅    |
-| EMBEDDINGS_PROVIDER         | Embeddings Service Provider                                         | openai                | ✅    |
-| CHROMA_DB_HOST              | ChromaDB 服务器地址                                                 | localhost             | ✅    |
-| CHROMA_DB_PORT              | ChromaDB 端口                                                       | 8001                  | ✅    |
-| OPENAI_API_KEY              | OpenAI API 密钥 （DeepSeek 兼容）                                   | -                     | ✅    |
-| OPENAI_API_BASE             | OpenAI API 代理 URL （DeepSeek 兼容： https://api.deepseek.com/v1） | -                     | ❌    |
-| OPENAI_MODEL                | OpenAI 模型名称                                                     | gpt-4                 | ✅    |
-| MINIO_ENDPOINT              | MinIO 服务器地址                                                    | localhost:9000        | ✅    |
-| MINIO_ACCESS_KEY            | MinIO 访问密钥                                                      | minioadmin            | ✅    |
-| MINIO_SECRET_KEY            | MinIO 密钥                                                          | minioadmin            | ✅    |
-| MINIO_BUCKET_NAME           | MinIO 存储桶名称                                                    | documents             | ✅    |
-| VECTOR_STORE_TYPE           | 向量存储类型                                                        | chroma                | ✅    |
-| VECTOR_STORE_URL            | Qdrant 向量存储 URL                                                 | http://localhost:6333 | ❌    |
-| VECTOR_STORE_PREFER_GRPC    | Qdrant 优先使用 gRPC 连接                                           | true                  | ❌    |
+| 配置项                      | 说明                     | 默认值    | 必填 |
+| --------------------------- | ------------------------ | --------- | ---- |
+| MYSQL_SERVER                | MySQL 服务器地址         | localhost | ✅    |
+| MYSQL_USER                  | MySQL 用户名             | postgres  | ✅    |
+| MYSQL_PASSWORD              | MySQL 密码               | postgres  | ✅    |
+| MYSQL_DATABASE              | MySQL 数据库名           | ragwebui  | ✅    |
+| SECRET_KEY                  | JWT 加密密钥             | -         | ✅    |
+| ACCESS_TOKEN_EXPIRE_MINUTES | JWT token 过期时间(分钟) | 30        | ✅    |
+
+### LLM 配置
+
+| 配置项            | 说明                  | 默认值                    | 适用场景             |
+| ----------------- | --------------------- | ------------------------- | -------------------- |
+| CHAT_PROVIDER     | LLM 服务提供商        | openai                    | ✅                    |
+| OPENAI_API_KEY    | OpenAI API 密钥       | -                         | 使用 OpenAI 时必填   |
+| OPENAI_API_BASE   | OpenAI API 基础 URL   | https://api.openai.com/v1 | 使用 OpenAI 时可选   |
+| OPENAI_MODEL      | OpenAI 模型名称       | gpt-4                     | 使用 OpenAI 时必填   |
+| DEEPSEEK_API_KEY  | DeepSeek API 密钥     | -                         | 使用 DeepSeek 时必填 |
+| DEEPSEEK_API_BASE | DeepSeek API 基础 URL | -                         | 使用 DeepSeek 时必填 |
+| DEEPSEEK_MODEL    | DeepSeek 模型名称     | -                         | 使用 DeepSeek 时必填 |
+
+### Embedding 配置
+
+| 配置项                      | 说明                     | 默认值                 | 适用场景                     |
+| --------------------------- | ------------------------ | ---------------------- | ---------------------------- |
+| EMBEDDINGS_PROVIDER         | Embedding 服务提供商     | openai                 | ✅                            |
+| OPENAI_API_KEY              | OpenAI API 密钥          | -                      | 使用 OpenAI Embedding 时必填 |
+| OPENAI_EMBEDDINGS_MODEL     | OpenAI Embedding 模型    | text-embedding-ada-002 | 使用 OpenAI Embedding 时必填 |
+| DASH_SCOPE_API_KEY          | DashScope API 密钥       | -                      | 使用 DashScope 时必填        |
+| DASH_SCOPE_EMBEDDINGS_MODEL | DashScope Embedding 模型 | -                      | 使用 DashScope 时必填        |
+
+### 向量数据库配置
+
+| 配置项                   | 说明                      | 默认值                | 适用场景             |
+| ------------------------ | ------------------------- | --------------------- | -------------------- |
+| VECTOR_STORE_TYPE        | 向量存储类型              | chroma                | ✅                    |
+| CHROMA_DB_HOST           | ChromaDB 服务器地址       | localhost             | 使用 ChromaDB 时必填 |
+| CHROMA_DB_PORT           | ChromaDB 端口             | 8000                  | 使用 ChromaDB 时必填 |
+| VECTOR_STORE_URL         | Qdrant 向量存储 URL       | http://localhost:6333 | 使用 Qdrant 时必填   |
+| VECTOR_STORE_PREFER_GRPC | Qdrant 优先使用 gRPC 连接 | true                  | 使用 Qdrant 时可选   |
+
+### 对象存储配置
+
+| 配置项            | 说明             | 默认值         | 必填 |
+| ----------------- | ---------------- | -------------- | ---- |
+| MINIO_ENDPOINT    | MinIO 服务器地址 | localhost:9000 | ✅    |
+| MINIO_ACCESS_KEY  | MinIO 访问密钥   | minioadmin     | ✅    |
+| MINIO_SECRET_KEY  | MinIO 密钥       | minioadmin     | ✅    |
+| MINIO_BUCKET_NAME | MinIO 存储桶名称 | documents      | ✅    |
+
+### 其他配置
+
+| 配置项 | 说明     | 默认值        | 必填 |
+| ------ | -------- | ------------- | ---- |
+| TZ     | 时区设置 | Asia/Shanghai | ❌    |
 
 ## 🤝 贡献指南
 

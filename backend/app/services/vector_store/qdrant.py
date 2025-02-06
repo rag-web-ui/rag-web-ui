@@ -2,6 +2,7 @@ from typing import List, Any
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import Qdrant
+from app.core.config import settings
 
 from .base import BaseVectorStore
 
@@ -10,14 +11,11 @@ class QdrantStore(BaseVectorStore):
     
     def __init__(self, collection_name: str, embedding_function: Embeddings, **kwargs):
         """Initialize Qdrant vector store"""
-        url = kwargs.get('url', 'http://localhost:6333')
-        prefer_grpc = kwargs.get('prefer_grpc', True)
-        
         self._store = Qdrant(
             collection_name=collection_name,
             embeddings=embedding_function,
-            url=url,
-            prefer_grpc=prefer_grpc
+            url=settings.QDRANT_URL,
+            prefer_grpc=settings.QDRANT_PREFER_GRPC
         )
     
     def add_documents(self, documents: List[Document]) -> None:

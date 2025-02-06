@@ -33,9 +33,13 @@
     "react-dropzone": "^14.2.3",
     "react-file-icon": "^1.5.0",
     "react-markdown": "^9.0.3",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.0",
     "shadcn-ui": "^0.8.0",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
     "@radix-ui/react-select": "^2.1.4",

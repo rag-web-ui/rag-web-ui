@@ -5,30 +5,8 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
-    environment:
-      - MYSQL_SERVER=db
-      - MYSQL_USER=ragwebui
-      - MYSQL_PASSWORD=ragwebui
-      - MYSQL_DATABASE=ragwebui
-      - SECRET_KEY=${SECRET_KEY}
-      - ACCESS_TOKEN_EXPIRE_MINUTES=30
-      # embeddings provider, if set to openai, use the openai api key and base url
-      - EMBEDDINGS_PROVIDER=openai
-      # remember to set the openai api key and base url
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_API_BASE=${OPENAI_API_BASE}
-      - OPENAI_MODEL=gpt-4
-      - CHROMA_DB_HOST=chromadb
-      - CHROMA_DB_PORT=8000
-      - VECTOR_STORE_TYPE=chroma
-      # For Qdrant, Remove the comment and run the following command to start the service
-      # - VECTOR_STORE_URL=http://localhost:6333
-      # - VECTOR_STORE_PREFER_GRPC=true
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
-      - MINIO_BUCKET_NAME=documents
-      - TZ=Asia/Shanghai
+    env_file:
+      - .env
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads

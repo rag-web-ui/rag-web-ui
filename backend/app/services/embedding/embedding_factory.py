@@ -17,12 +17,13 @@ class EmbeddingsFactory:
         if embeddings_provider == "openai":
             return OpenAIEmbeddings(
                 openai_api_key=settings.OPENAI_API_KEY,
-                openai_api_base=settings.OPENAI_API_BASE
+                openai_api_base=settings.OPENAI_API_BASE,
+                model=settings.OPENAI_EMBEDDINGS_MODEL
             )
         elif embeddings_provider == "dashscope":
             return DashScopeEmbeddings(
-                model=settings.EMBEDDINGS_MODEL,
-                dashscope_api_key=settings.OPENAI_API_KEY
+                model=settings.DASH_SCOPE_EMBEDDINGS_MODEL,
+                dashscope_api_key=settings.DASH_SCOPE_API_KEY
             )
 
         # Extend with other providers:

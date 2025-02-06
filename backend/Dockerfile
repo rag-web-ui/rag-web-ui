@@ -26,8 +26,9 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p uploads
 
-# Set Python path
+# Set Python path and environment
 ENV PYTHONPATH=/app
+ENV ENVIRONMENT=development
 
 # Run the application
 ENTRYPOINT ["./entrypoint.sh"]

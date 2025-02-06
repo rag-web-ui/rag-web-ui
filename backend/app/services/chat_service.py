@@ -13,6 +13,7 @@ from app.models.knowledge import KnowledgeBase, Document
 from langchain.globals import set_verbose, set_debug
 from app.services.vector_store import VectorStoreFactory
 from app.services.embedding.embedding_factory import EmbeddingsFactory
+from app.services.llm.llm_factory import LLMFactory
 
 set_verbose(True)
 set_debug(True)
@@ -79,14 +80,8 @@ async def generate_response(
         retriever = vector_stores[0].as_retriever()
         
         # Initialize the language model
-        llm = ChatOpenAI(
-            temperature=0,
-            streaming=True,
-            model=settings.OPENAI_MODEL,
-            openai_api_key=settings.OPENAI_API_KEY,
-            openai_api_base=settings.OPENAI_API_BASE
-        )
-
+        llm = LLMFactory.create()
+        
         # Create contextualize question prompt
         contextualize_q_system_prompt = (
             "Given a chat history and the latest user question "
