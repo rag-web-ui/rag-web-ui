@@ -3,7 +3,7 @@ uvicorn>=0.24.0
 python-jose>=3.3.0
 passlib>=1.7.4
 python-multipart>=0.0.6
-langchain>=0.1.0
+langchain>=0.3.0
 langchain-community>=0.0.10
 langchain-openai>=0.0.5
 langchain-chroma>=0.0.5
@@ -23,3 +23,4 @@ markdown>=3.0.0
 unstructured[md]>=0.10.0
 openai>=1.30.0
 email-validator
+dashscope>=1.13.6

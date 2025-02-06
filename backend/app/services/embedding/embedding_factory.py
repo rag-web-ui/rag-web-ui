@@ -2,6 +2,8 @@ from app.core.config import settings
 from langchain_openai import OpenAIEmbeddings
 # If you plan on adding other embeddings, import them here
 # from some_other_module import AnotherEmbeddingClass
+from langchain_community.embeddings import DashScopeEmbeddings
+
 
 class EmbeddingsFactory:
     @staticmethod
@@ -17,6 +19,12 @@ class EmbeddingsFactory:
                 openai_api_key=settings.OPENAI_API_KEY,
                 openai_api_base=settings.OPENAI_API_BASE
             )
+        elif embeddings_provider == "dashscope":
+            return DashScopeEmbeddings(
+                model=settings.EMBEDDINGS_MODEL,
+                dashscope_api_key=settings.OPENAI_API_KEY
+            )
+
         # Extend with other providers:
         # elif embeddings_provider == "another_provider":
         #     return AnotherEmbeddingClass(...)
