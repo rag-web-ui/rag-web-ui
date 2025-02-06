@@ -195,6 +195,7 @@ Configure the docker-compose.yml file with your environment variables, especiall
 - `OPENAI_API_KEY`: Your OpenAI API key for LLM services
 - `OPENAI_API_BASE`: OpenAI API base URL (default is https://api.openai.com/v1)
 - `EMBEDDINGS_PROVIDER`: Embeddings service provider (default is openai)
+- `EMBEDDINGS_MODEL`: Embeddings model for some providers (default is text-embedding-v3)
 - `OPENAI_MODEL`: OpenAI model to use (default is gpt-4)
 
 You can find the full configuration options in the docker-compose.yml file.

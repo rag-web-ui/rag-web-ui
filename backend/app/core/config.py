@@ -38,6 +38,7 @@ class Settings(BaseSettings):
 
     # Embeddings settings
     EMBEDDINGS_PROVIDER: str = os.getenv("EMBEDDINGS_PROVIDER", "openai")
+    EMBEDDINGS_MODEL: str = os.getenv("EMBEDDINGS_MODEL", "text-embedding-v3")
 
     # Vector DB settings
     CHROMA_DB_HOST: str = os.getenv("CHROMA_DB_HOST", "localhost")
