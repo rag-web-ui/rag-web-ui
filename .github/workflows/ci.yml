@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run build
+        run: |
+          cd backend
+          python -m unittest discover
+
+      - name: Start backend server
+        run: |
+          cd backend
+          nohup python main.py &
+
+      - name: Wait for backend to start
+        run: sleep 5
+
+      - name: Perform end-to-end test
+        run: |
+          curl -f http://localhost:8000/api/v1/health
