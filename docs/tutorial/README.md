@@ -783,3 +783,90 @@ flowchart TD
 -  [LangChain 官网](https://python.langchain.com/)  
 -  [ChromaDB](https://docs.trychroma.com/)  
 - [OpenAI Embeddings 介绍](https://platform.openai.com/docs/guides/embeddings)  
+
+## 9. 处理网络错误和无法访问的服务器
+
+在注册账户时，可能会遇到网络错误或服务器无法访问的问题。以下是一些处理这些问题的方法：
+
+### 9.1 更新依赖项
+
+确保 `backend/requirements.txt` 文件中指定的依赖项版本是可用的。例如，将 `langchain-deepseek` 的版本更新为 `==0.1.1`：
+
+```plaintext
+langchain-deepseek==0.1.1
+```
+
+### 9.2 错误处理
+
+在 `backend/app/api/api_v1/auth.py` 文件中添加错误处理，以捕获注册过程中可能出现的网络错误和无法访问的服务器问题：
+
+```python
+from requests.exceptions import RequestException
+
+@router.post("/register", response_model=UserResponse)
+def register(*, db: Session = Depends(get_db), user_in: UserCreate) -> Any:
+    """
+    Register a new user.
+    """
+    try:
+        # Check if user with this email exists
+        user = db.query(User).filter(User.email == user_in.email).first()
+        if user:
+            raise HTTPException(
+                status_code=400,
+                detail="A user with this email already exists.",
+            )
+        
+        # Check if user with this username exists
+        user = db.query(User).filter(User.username == user_in.username).first()
+        if user:
+            raise HTTPException(
+                status_code=400,
+                detail="A user with this username already exists.",
+            )
+        
+        # Create new user
+        user = User(
+            email=user_in.email,
+            username=user_in.username,
+            hashed_password=security.get_password_hash(user_in.password),
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+    except RequestException as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Network error or server is unreachable. Please try again later.",
+        ) from e
+```
+
+### 9.3 重试机制
+
+在 `backend/Dockerfile` 和 `docker-compose.yml` 文件中添加重试机制，以处理构建过程中可能出现的网络错误：
+
+#### `backend/Dockerfile`
+
+```dockerfile
+# Install Python packages with retry mechanism
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (echo "Retrying in 5 seconds..." && sleep 5 && pip install --no-cache-dir -r requirements.txt) || \
+    (echo "Retrying in 10 seconds..." && sleep 10 && pip install --no-cache-dir -r requirements.txt)
+```
+
+#### `docker-compose.yml`
+
+```yaml
+services:
+  backend:
+    build: ./backend
+    restart: on-failure
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+```
+
+通过以上方法，尝试处理注册账户时可能遇到的网络错误和无法访问的服务器问题。

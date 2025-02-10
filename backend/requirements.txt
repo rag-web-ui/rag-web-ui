@@ -23,5 +23,5 @@ unstructured[md]>=0.10.0
 openai>=1.30.0
 email-validator
 dashscope>=1.13.6
-langchain-deepseek>=0.1.2
+langchain-deepseek==0.1.1
 langchain-ollama==0.2.3

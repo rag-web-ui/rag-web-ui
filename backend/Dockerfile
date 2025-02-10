@@ -13,8 +13,10 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements file
 COPY requirements.txt .
 
-# Install Python packages
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python packages with retry mechanism
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (echo "Retrying in 5 seconds..." && sleep 5 && pip install --no-cache-dir -r requirements.txt) || \
+    (echo "Retrying in 10 seconds..." && sleep 10 && pip install --no-cache-dir -r requirements.txt)
 
 # Copy entrypoint script first
 COPY entrypoint.sh .
