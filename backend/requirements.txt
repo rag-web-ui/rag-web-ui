@@ -25,3 +25,4 @@ email-validator
 dashscope>=1.13.6
 langchain-deepseek==0.1.1
 langchain-ollama==0.2.3
+docx2txt==0.8
