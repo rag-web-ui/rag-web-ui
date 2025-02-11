@@ -30,8 +30,10 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    env_file:
+      - .env
     environment:
-      - NEXT_PUBLIC_API_URL=
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     networks:
       - app_network
 

@@ -322,6 +322,18 @@ alembic upgrade head
 | MINIO_SECRET_KEY  | MinIO Secret Key     | minioadmin     | ✅        |
 | MINIO_BUCKET_NAME | MinIO Bucket Name    | documents      | ✅        |
 
+### Frontend Configuration
+
+| Parameter            | Description                   | Default               | Required |
+| ------------------- | ----------------------------- | --------------------- | -------- |
+| NEXT_PUBLIC_API_URL | Backend API URL               | http://localhost:8000 | ✅        |
+
+### CORS Configuration
+
+| Parameter              | Description                                          | Default | Required |
+| --------------------- | ---------------------------------------------------- | ------- | -------- |
+| ADDITIONAL_CORS_ORIGINS| Additional allowed origins for CORS (comma-separated) | -       | ❌        |
+
 ### Other Configuration
 
 | Parameter | Description      | Default       | Required |
