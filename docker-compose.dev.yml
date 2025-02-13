@@ -1,6 +1,28 @@
-version: "3.8"
-
 services:
+  nginx-dev:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+      - minio
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   backend:
     build:
       context: ./backend
@@ -9,6 +31,9 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - DEBUG=1
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads
@@ -24,11 +49,21 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    environment:
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost/api
     ports:
       - "3000:3000"
     volumes:
@@ -38,6 +73,11 @@ services:
       - .env
     networks:
       - app_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   db:
     image: mysql:8.0
@@ -67,8 +107,8 @@ services:
   minio:
     image: minio/minio:latest
     ports:
-      - "9000:9000" # API port
-      - "9001:9001" # Console port
+      - "9000:9000"
+      - "9001:9001"
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
