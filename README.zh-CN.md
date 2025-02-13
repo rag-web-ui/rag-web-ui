@@ -210,8 +210,8 @@ docker compose up -d --build
 
 服务启动后，可以通过以下地址访问：
 
-- 🌐 前端界面: http://localhost:3000
-- 📚 API 文档: http://localhost:8000/redoc
+- 🌐 前端界面: http://localhost
+- 📚 API 文档: http://localhost/redoc
 - 💾 MinIO 控制台: http://localhost:9001
 
 ## 🏗️ 技术架构
@@ -284,17 +284,17 @@ alembic upgrade head
 
 ### LLM 配置
 
-| 配置项            | 说明                  | 默认值                    | 适用场景             |
-| ----------------- | --------------------- | ------------------------- | -------------------- |
-| CHAT_PROVIDER     | LLM 服务提供商        | openai                    | ✅                    |
-| OPENAI_API_KEY    | OpenAI API 密钥       | -                         | 使用 OpenAI 时必填   |
-| OPENAI_API_BASE   | OpenAI API 基础 URL   | https://api.openai.com/v1 | 使用 OpenAI 时可选   |
-| OPENAI_MODEL      | OpenAI 模型名称       | gpt-4                     | 使用 OpenAI 时必填   |
-| DEEPSEEK_API_KEY  | DeepSeek API 密钥     | -                         | 使用 DeepSeek 时必填 |
-| DEEPSEEK_API_BASE | DeepSeek API 基础 URL | -                         | 使用 DeepSeek 时必填 |
-| DEEPSEEK_MODEL    | DeepSeek 模型名称     | -                         | 使用 DeepSeek 时必填 |
-| OLLAMA_API_BASE   | Ollama API 基础 URL   | http://localhost:11434    | 使用 Ollama 时必填, 注意需要先拉取模型   |
-| OLLAMA_MODEL      | Ollama 模型名称       | -                         | 使用 Ollama 时必填   |
+| 配置项            | 说明                  | 默认值                    | 适用场景                               |
+| ----------------- | --------------------- | ------------------------- | -------------------------------------- |
+| CHAT_PROVIDER     | LLM 服务提供商        | openai                    | ✅                                      |
+| OPENAI_API_KEY    | OpenAI API 密钥       | -                         | 使用 OpenAI 时必填                     |
+| OPENAI_API_BASE   | OpenAI API 基础 URL   | https://api.openai.com/v1 | 使用 OpenAI 时可选                     |
+| OPENAI_MODEL      | OpenAI 模型名称       | gpt-4                     | 使用 OpenAI 时必填                     |
+| DEEPSEEK_API_KEY  | DeepSeek API 密钥     | -                         | 使用 DeepSeek 时必填                   |
+| DEEPSEEK_API_BASE | DeepSeek API 基础 URL | -                         | 使用 DeepSeek 时必填                   |
+| DEEPSEEK_MODEL    | DeepSeek 模型名称     | -                         | 使用 DeepSeek 时必填                   |
+| OLLAMA_API_BASE   | Ollama API 基础 URL   | http://localhost:11434    | 使用 Ollama 时必填, 注意需要先拉取模型 |
+| OLLAMA_MODEL      | Ollama 模型名称       | -                         | 使用 Ollama 时必填                     |
 
 ### Embedding 配置
 

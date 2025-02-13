@@ -207,8 +207,8 @@ docker compose up -d --build
 
 Access the following URLs after service startup:
 
-- 🌐 Frontend UI: http://localhost:3000
-- 📚 API Documentation: http://localhost:8000/redoc
+- 🌐 Frontend UI: http://localhost
+- 📚 API Documentation: http://localhost/redoc
 - 💾 MinIO Console: http://localhost:9001
 
 ## 🏗️ Architecture
@@ -321,18 +321,6 @@ alembic upgrade head
 | MINIO_ACCESS_KEY  | MinIO Access Key     | minioadmin     | ✅        |
 | MINIO_SECRET_KEY  | MinIO Secret Key     | minioadmin     | ✅        |
 | MINIO_BUCKET_NAME | MinIO Bucket Name    | documents      | ✅        |
-
-### Frontend Configuration
-
-| Parameter            | Description                   | Default               | Required |
-| ------------------- | ----------------------------- | --------------------- | -------- |
-| NEXT_PUBLIC_API_URL | Backend API URL               | http://localhost:8000 | ✅        |
-
-### CORS Configuration
-
-| Parameter              | Description                                          | Default | Required |
-| --------------------- | ---------------------------------------------------- | ------- | -------- |
-| ADDITIONAL_CORS_ORIGINS| Additional allowed origins for CORS (comma-separated) | -       | ❌        |
 
 ### Other Configuration
 

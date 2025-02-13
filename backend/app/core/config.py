@@ -7,15 +7,6 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"  # Project version
     API_V1_STR: str = "/api"  # API version string
     
-    # CORS settings
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        *filter(None, os.getenv("ADDITIONAL_CORS_ORIGINS", "").split(","))  # From environment variable to add additional sources
-    ]
-    
     # MySQL settings
     MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "localhost")
     MYSQL_USER: str = os.getenv("MYSQL_USER", "ragwebui")

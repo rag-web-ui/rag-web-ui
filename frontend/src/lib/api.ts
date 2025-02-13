@@ -10,13 +10,8 @@ export class ApiError extends Error {
   }
 }
 
-export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-export async function fetchApi(url: string, options: FetchOptions = {}) {
+export async function fetchApi(fullUrl: string, options: FetchOptions = {}) {
   const { data, headers: customHeaders = {}, ...restOptions } = options;
-
-  // Combine BASE_URL with the provided url if it's not an absolute URL
-  const fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;
 
   // Get token from localStorage
   let token = '';

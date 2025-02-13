@@ -3,8 +3,6 @@ version: "3.8"
 services:
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
     env_file:
       - .env
     volumes:
@@ -28,15 +26,9 @@ services:
 
   frontend:
     build: ./frontend
-    ports:
-      - "3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    env_file:
-      - .env
-    environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     networks:
       - app_network
 
@@ -105,6 +97,19 @@ services:
     volumes:
       - minio_data:/data
     command: server --console-address ":9001" /data
+    networks:
+      - app_network
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+      - minio
     networks:
       - app_network
 
