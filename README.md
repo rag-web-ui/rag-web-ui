@@ -207,9 +207,9 @@ docker compose up -d --build
 
 Access the following URLs after service startup:
 
-- 🌐 Frontend UI: http://localhost
-- 📚 API Documentation: http://localhost/redoc
-- 💾 MinIO Console: http://localhost:9001
+- 🌐 Frontend UI: http://127.0.0.1.nip.io
+- 📚 API Documentation: http://127.0.0.1.nip.io/redoc
+- 💾 MinIO Console: http://127.0.0.1.nip.io:9001
 
 ## 🏗️ Architecture
 
@@ -240,31 +240,10 @@ The system is optimized in the following aspects:
 
 ## 📖 Development Guide
 
-### Backend Development
-
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+docker compose -f docker-compose.dev.yml up -d --build
 ```
 
-### Frontend Development
-
-```bash
-cd frontend
-pnpm install
-pnpm dev
-```
-
-### Database Migration
-
-```bash
-cd backend
-alembic revision --autogenerate -m "migration message"
-alembic upgrade head
-```
 ## 🔧 Configuration
 
 ### Core Configuration

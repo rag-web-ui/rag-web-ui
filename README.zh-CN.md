@@ -210,9 +210,9 @@ docker compose up -d --build
 
 服务启动后，可以通过以下地址访问：
 
-- 🌐 前端界面: http://localhost
-- 📚 API 文档: http://localhost/redoc
-- 💾 MinIO 控制台: http://localhost:9001
+- 🌐 前端界面: http://127.0.0.1.nip.io
+- 📚 API 文档: http://127.0.0.1.nip.io/redoc
+- 💾 MinIO 控制台: http://127.0.0.1.nip.io:9001
 
 ## 🏗️ 技术架构
 
@@ -243,31 +243,12 @@ docker compose up -d --build
 
 ## 📖 开发指南
 
-### 后端开发
-
+使用 docker compose 启动开发环境，可热更新
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+docker compose -f docker-compose.dev.yml up -d --build
 ```
 
-### 前端开发
-
-```bash
-cd frontend
-pnpm install
-pnpm dev
-```
-
-### 数据库迁移
-
-```bash
-cd backend
-alembic revision --autogenerate -m "migration message"
-alembic upgrade head
-```
+访问地址：http://127.0.0.1.nip.io
 
 ## 🔧 配置说明
 
