@@ -333,7 +333,7 @@ embeddings = OpenAIEmbeddings(
 )
 ```
 
-## 3.3 向量数据库
+### 3.3 向量数据库
 
 在文本 Embedding 之后，需要将向量存储到向量数据库中，以便后续的检索和相似度计算。
 
@@ -348,7 +348,7 @@ embeddings = OpenAIEmbeddings(
 7. Zilliz
 
 
-量数据库除了存储向量，还要携带某些元信息(文档来源、段落位置等)方便查阅， 一般情况下，我们会存入这样的数据结构到向量数据库中：
+向量数据库除了存储向量，还要携带某些元信息(文档来源、段落位置等)方便查阅， 一般情况下，我们会存入这样的数据结构到向量数据库中：
 
 除了向量之外， 我们还需要存入一些元数据， 例如：
 
@@ -425,7 +425,7 @@ ChromaDB 默认使用 Cosine Similarity，这也是最常用的相似度计算�
 
 虽然重排序会增加一定延迟，但在对准确度要求较高的场景下，这个成本通常是值得的。
 
-## 4.3 拼接上下文与用户问题
+### 4.3 拼接上下文与用户问题
 
 在检索到相关文档片段后，需要将它们与用户问题拼接成合适的 prompt，以供 LLM 生成回答。
 
@@ -470,7 +470,7 @@ qa_system_prompt = (
   )
 ```
 
-## 6. 工程实战示例：RAG 在知识库 QA 中的流程
+## 5. 工程实战示例：RAG 在知识库 QA 中的流程
 
 理论的事情，相信大家都了解了，相信大家也看过不少的文章，但是可能没有真正动手实践过，或者项目太复杂无从下手，或是没有一个完整的项目可以参考。
 
@@ -484,7 +484,7 @@ qa_system_prompt = (
 
 让我们通过一个完整的工程实现示例，来理解 RAG 在知识库问答中的具体应用流程。我们将按照数据流的顺序，逐步解析关键代码的实现。
 
-### 6.1 文档上传 → 异步处理
+### 5.1 文档上传 → 异步处理
 
 详细代码可以参考： `backend/app/services/document_processor.py`
 
@@ -551,7 +551,7 @@ sequenceDiagram
 
 当然这里也设计也有设计到一些小细节，例如在处理文档的时候，可能很多系统都会选择先删后增，但是这样会导致向量数据库中的数据被删除，从而导致检索结果不准确。所以我们这里会通过一个临时表来实现这个功能，确保新的文件被处理后，旧的文件才被删除。
 
-### 6.2 用户提问 → 检索 + LLM 生成
+### 5.2 用户提问 → 检索 + LLM 生成
 
 代码可查阅： `backend/app/services/chat_service.py`
 
@@ -747,13 +747,13 @@ flowchart TD
 
 当用户点击引用信息的时候， 会弹出一个弹窗， 展示引用详情， 包括知识库名称， 文件名称， 以及引用内容。
 
-## 7. 拓展：根据需求定制你的 RAG
+## 6. 拓展：根据需求定制你的 RAG
 
-### 7.1 不同的向量数据库或大语言模型
+### 6.1 不同的向量数据库或大语言模型
 
 目前已经通过 Factory 模式， 支持了不同的向量数据库、不同的大模型，例如 Ollama 也有同学在支持， 可以参考 `backend/app/services/vector_store/factory.py` 这个文件。
 
-### 7.2 Chunk 分割策略与 Embedding 模型的调整
+### 6.2 Chunk 分割策略与 Embedding 模型的调整
 
 不同的 Embedding 模型对多语言支持和文本类型有不同的特点：
 
@@ -769,26 +769,26 @@ flowchart TD
 
 选择合适的 Embedding 模型可以显著提升检索效果。
 
-## 8. 总结与下一步
+## 7. 总结与下一步
 
 整个项目到这里就结束了， 整个项目中， 我们通过一个完整的工程实现示例， 来理解 RAG 在知识库问答中的具体应用流程。
 
-如果你需要 Ask Me Anything， 可以通过 Issue 来联系我。
+如果你需要 Ask Me Anything， 可以通过 [Issue](https://github.com/rag-web-ui/rag-web-ui/issues) 来联系我。
 
 你可以深入研究的方向
 - 多路召回（多个数据库或不同关注点检索结果的合并）
 - RAG + 交叉编码 re-ranking 提高回答精度
 - 长文本多轮对话（上下文记忆 / Conversation Memory）
 
--  [LangChain 官网](https://python.langchain.com/)  
--  [ChromaDB](https://docs.trychroma.com/)  
+- [LangChain 官网](https://python.langchain.com/)  
+- [ChromaDB](https://docs.trychroma.com/)  
 - [OpenAI Embeddings 介绍](https://platform.openai.com/docs/guides/embeddings)  
 
-## 9. 处理网络错误和无法访问的服务器
+## 8. 处理网络错误和无法访问的服务器
 
 在注册账户时，可能会遇到网络错误或服务器无法访问的问题。以下是一些处理这些问题的方法：
 
-### 9.1 更新依赖项
+### 8.1 更新依赖项
 
 确保 `backend/requirements.txt` 文件中指定的依赖项版本是可用的。例如，将 `langchain-deepseek` 的版本更新为 `==0.1.1`：
 
@@ -796,7 +796,7 @@ flowchart TD
 langchain-deepseek==0.1.1
 ```
 
-### 9.2 错误处理
+### 8.2 错误处理
 
 在 `backend/app/api/api_v1/auth.py` 文件中添加错误处理，以捕获注册过程中可能出现的网络错误和无法访问的服务器问题：
 
@@ -842,7 +842,7 @@ def register(*, db: Session = Depends(get_db), user_in: UserCreate) -> Any:
         ) from e
 ```
 
-### 9.3 重试机制
+### 8.3 重试机制
 
 在 `backend/Dockerfile` 和 `docker-compose.yml` 文件中添加重试机制，以处理构建过程中可能出现的网络错误：
 
