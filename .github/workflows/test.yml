@@ -1,0 +1,46 @@
+name: Test Services
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create env file
+        run: |
+          cp .env.example .env
+
+      - name: Start services
+        run: |
+          docker compose up -d
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 30
+
+      - name: Check services
+        run: |
+          # Check if containers are running
+          docker compose ps
+
+          # Test nginx endpoint
+          curl -v http://localhost:80/
+
+          # Test backend health
+          curl -v http://localhost:80/api/health
+
+      - name: Show logs if failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v

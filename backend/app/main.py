@@ -23,4 +23,12 @@ async def startup_event():
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to RAG Web UI API"} 
+    return {"message": "Welcome to RAG Web UI API"}
+
+@app.get("/api/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT
+    } 
