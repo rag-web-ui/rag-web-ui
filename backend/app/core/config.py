@@ -22,10 +22,8 @@ class Settings(BaseSettings):
             return self.SQLALCHEMY_DATABASE_URI
 
         return (
-            f"mysql+mysqlconnector://"
-            f"{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
-            f"@{self.MYSQL_SERVER}:{self.MYSQL_PORT}"
-            f"/{self.MYSQL_DATABASE}"
+            f"mysql+mysqlconnector://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
+            f"@{self.MYSQL_SERVER}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
         )
 
     # JWT settings
