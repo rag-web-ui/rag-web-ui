@@ -1,20 +1,16 @@
 import logging
+import subprocess
 import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Tuple
 
-from alembic import command
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import DatabaseError, OperationalError
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 
@@ -114,10 +110,10 @@ class DatabaseMigrator:
 
             if needs_migration:
                 logger.info(f"Current revision: {current_rev}, upgrading to: {head_rev}")
-                command.upgrade(self.alembic_cfg, "head")
+                subprocess.run(["alembic", "upgrade", "head"])
                 logger.info("Database migrations completed successfully")
             else:
-                logger.info("Database is already at the latest version")
+                logger.info(f"Database is already at the latest version: {current_rev}")
 
         except Exception as e:
             logger.error(f"Error during database migration: {e}")
