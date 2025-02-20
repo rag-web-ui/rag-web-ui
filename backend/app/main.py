@@ -1,9 +1,16 @@
+import logging
+
 from app.api.api_v1.api import api_router
 from app.api.openapi.api import router as openapi_router
 from app.core.config import settings
 from app.core.minio import init_minio
 from app.startup.migarate import DatabaseMigrator
 from fastapi import FastAPI
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
