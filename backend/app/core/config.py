@@ -10,8 +10,6 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"  # API version string
 
     # MySQL settings
-    MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "localhost")
-    MYSQL_PORT: int = os.getenv("MYSQL_PORT", 3306)
     MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "127.0.0.1")
     MYSQL_PORT: str = os.getenv("MYSQL_PORT", "3306")
     MYSQL_USER: str = os.getenv("MYSQL_USER", "ragwebui")
