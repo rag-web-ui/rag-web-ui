@@ -1,6 +1,7 @@
-from pydantic_settings import BaseSettings
-from typing import Optional, List
 import os
+from typing import List, Optional
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -9,8 +10,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"  # API version string
 
     # MySQL settings
-    MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "localhost")
-    MYSQL_PORT: int = os.getenv("MYSQL_PORT", 3306)
+    MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "127.0.0.1")
+    MYSQL_PORT: str = os.getenv("MYSQL_PORT", "3306")
     MYSQL_USER: str = os.getenv("MYSQL_USER", "ragwebui")
     MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "ragwebui")
     MYSQL_DATABASE: str = os.getenv("MYSQL_DATABASE", "ragwebui")
@@ -20,7 +21,6 @@ class Settings(BaseSettings):
     def get_database_url(self) -> str:
         if self.SQLALCHEMY_DATABASE_URI:
             return self.SQLALCHEMY_DATABASE_URI
-
         return (
             f"mysql+mysqlconnector://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
             f"@{self.MYSQL_SERVER}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
