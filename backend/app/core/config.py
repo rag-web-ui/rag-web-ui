@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"  # API version string
 
     # MySQL settings
-    MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "127.0.0.1")
-    MYSQL_PORT: str = os.getenv("MYSQL_PORT", "3306")
+    MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "localhost")
+    MYSQL_PORT: int = int(os.getenv("MYSQL_PORT", "3306"))
     MYSQL_USER: str = os.getenv("MYSQL_USER", "ragwebui")
     MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "ragwebui")
     MYSQL_DATABASE: str = os.getenv("MYSQL_DATABASE", "ragwebui")
@@ -72,9 +72,6 @@ class Settings(BaseSettings):
     # Ollama settings
     OLLAMA_API_BASE: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "deepseek-r1:7b"
-    OLLAMA_EMBEDDINGS_MODEL: str = os.getenv(
-        "OLLAMA_EMBEDDINGS_MODEL", "nomic-embed-text"
-    )  # Added this line
     OLLAMA_EMBEDDINGS_MODEL: str = os.getenv(
         "OLLAMA_EMBEDDINGS_MODEL", "nomic-embed-text"
     )  # Added this line
