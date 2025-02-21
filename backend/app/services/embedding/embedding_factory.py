@@ -27,6 +27,8 @@ class EmbeddingsFactory:
                 dashscope_api_key=settings.DASH_SCOPE_API_KEY
             )
         elif embeddings_provider == "ollama":
+            if not settings.OLLAMA_EMBEDDINGS_MODEL:
+                raise ValueError("OLLAMA_EMBEDDINGS_MODEL is not set in the environment variables.")
             return OllamaEmbeddings(
                 model=settings.OLLAMA_EMBEDDINGS_MODEL,
                 base_url=settings.OLLAMA_API_BASE
