@@ -50,8 +50,10 @@ exit
 ### 2. Database Connection Issues
 
 #### Environment Variables
+
 Verify your environment variables in `.env` file:
-```
+
+```dotenv
 DB_HOST=db
 DB_USER=ragwebui
 DB_PASSWORD=ragwebui
@@ -59,7 +61,9 @@ DB_NAME=ragwebui
 ```
 
 #### Service Order Problems
+
 If the backend started before MySQL was ready:
+
 ```bash
 # Restart backend service
 docker compose -f docker-compose.yml restart backend
@@ -70,6 +74,7 @@ docker compose -f docker-compose.yml restart backend
 ### 1. Container Startup Failures
 
 #### Check Container Status
+
 ```bash
 # View all container statuses
 docker ps -a
@@ -79,6 +84,7 @@ docker logs <container-id>
 ```
 
 #### Port Conflicts
+
 ```bash
 # Check if ports are already in use
 netstat -tuln | grep <port-number>
@@ -90,6 +96,7 @@ lsof -i :<port-number>
 ### 2. Network Issues
 
 #### Check Network Connectivity
+
 ```bash
 # List Docker networks
 docker network ls
@@ -99,6 +106,7 @@ docker network inspect ragwebui_default
 ```
 
 #### Container Communication
+
 ```bash
 # Test network connectivity between containers
 docker exec ragwebui-backend-1 ping db
@@ -109,11 +117,13 @@ docker exec ragwebui-backend-1 ping db
 ### 1. Frontend Issues
 
 #### Static Files Not Loading
+
 - Check if the frontend container is running
 - Verify nginx configuration
 - Check console for CORS errors
 
 #### Authentication Problems
+
 - Clear browser cache and cookies
 - Verify JWT token configuration
 - Check backend logs for auth errors
@@ -121,6 +131,7 @@ docker exec ragwebui-backend-1 ping db
 ### 2. Backend Issues
 
 #### API Endpoints Not Responding
+
 ```bash
 # Check backend logs
 docker compose -f docker-compose.yml logs backend
@@ -130,6 +141,7 @@ curl http://localhost/api/health
 ```
 
 #### Memory Issues
+
 ```bash
 # Check container resource usage
 docker stats
@@ -143,35 +155,41 @@ docker exec ragwebui-backend-1 ps aux
 If you need to start fresh:
 
 1. Stop all containers:
-```bash
-docker compose -f docker-compose.yml down
-```
+
+    ```bash
+    docker compose -f docker-compose.yml down
+    ```
 
 2. Remove volumes to clear database:
-```bash
-docker compose -f docker-compose.yml down -v
-```
+
+    ```bash
+    docker compose -f docker-compose.yml down -v
+    ```
 
 3. Start everything again:
-```bash
-docker compose -f docker-compose.yml up -d
-```
+
+    ```bash
+    docker compose -f docker-compose.yml up -d
+    ```
 
 4. Wait a minute for MySQL to initialize, then run migrations:
-```bash
-docker exec -it ragwebui-backend-1 alembic upgrade head
-```
+
+    ```bash
+    docker exec -it ragwebui-backend-1 alembic upgrade head
+    ```
 
 ## Debugging Tools
 
 ### 1. Logging
 
 #### View All Service Logs
+
 ```bash
 docker compose -f docker-compose.yml logs
 ```
 
 #### Service-Specific Logs
+
 ```bash
 docker compose -f docker-compose.yml logs backend
 docker compose -f docker-compose.yml logs db
@@ -181,11 +199,13 @@ docker compose -f docker-compose.yml logs frontend
 ### 2. Database Debugging
 
 #### Connect to Database CLI
+
 ```bash
 docker exec -it ragwebui-db-1 mysql -u ragwebui -p
 ```
 
 #### Backup and Restore
+
 ```bash
 # Create backup
 docker exec ragwebui-db-1 mysqldump -u ragwebui -p ragwebui > backup.sql
@@ -197,6 +217,7 @@ docker exec -i ragwebui-db-1 mysql -u ragwebui -p ragwebui < backup.sql
 ## Need More Help?
 
 If you're still experiencing issues:
+
 1. Check the application logs for specific error messages
 2. Verify all environment variables are correctly set
 3. Ensure all required services are running

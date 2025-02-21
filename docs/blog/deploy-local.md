@@ -1,5 +1,3 @@
-
-
 # 🚀 十分钟搭建属于自己的 DeepSeek 知识库！完全开源、离线部署方案详解
 
 ## 💡 序言
@@ -21,6 +19,7 @@
 
 1. 访问 [Ollama 官网](https://ollama.com/) 下载并安装对应系统版本
 2. 验证安装：
+
 ````bash
 ollama --version
 ````
@@ -28,10 +27,12 @@ ollama --version
 ### 2. 下载必要的模型
 
 我们需要两个模型：
+
 - deepseek-r1:7b 用于对话生成
 - nomic-embed-text 用于文本向量化
 
 执行以下命令下载模型：
+
 ````bash
 # 下载对话模型
 ollama pull deepseek-r1:7b
@@ -52,6 +53,7 @@ cd rag-web-ui
 ### 2. 配置环境变量
 
 复制环境变量模板并编辑：
+
 ````bash
 cp .env.example .env
 ````
@@ -90,11 +92,13 @@ MINIO_BUCKET_NAME=documents
 ### 3. 启动服务
 
 使用 Docker Compose 启动所有服务：
+
 ````bash
 docker compose up -d --build
 ````
 
 这将启动以下服务：
+
 - 前端界面 (Next.js)
 - 后端 API (FastAPI)
 - MySQL 数据库
@@ -106,15 +110,15 @@ docker compose up -d --build
 
 服务启动后，可以通过以下地址访问：
 
-- 前端界面：http://localhost:3000
-- API 文档：http://localhost:8000/redoc
-- MinIO 控制台：http://localhost:9001
+- 前端界面：<http://localhost:3000>
+- API 文档：<http://localhost:8000/redoc>
+- MinIO 控制台：<http://localhost:9001>
 
 ## 📚 使用指南
 
 ### 1. 创建知识库
 
-1. 访问 http://localhost:3000
+1. 访问 <http://localhost:3000>
 2. 登录后，点击"创建知识库"
 3. 填写知识库名称和描述
 4. 上传文档，选择切片方式和大小
@@ -122,6 +126,7 @@ docker compose up -d --build
 6. 等待文档处理完成
 
 支持以下格式：
+
 - PDF
 - DOCX
 - Markdown
