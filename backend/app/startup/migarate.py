@@ -1,15 +1,13 @@
 import logging
-import subprocess
-import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Tuple
 
 from alembic.config import Config
+from alembic.config import main as alembic_main
 from alembic.migration import MigrationContext
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection
-from sqlalchemy.exc import DatabaseError, OperationalError
 
 logger = logging.getLogger(__name__)
 
@@ -24,41 +22,22 @@ class DatabaseMigrator:
         self.alembic_cfg = self._get_alembic_config()
 
     @contextmanager
-    def database_connection(self, timeout: int = 3) -> Generator[Connection, None, None]:
+    def database_connection(self) -> Generator[Connection, None, None]:
         """
-        Context manager for database connections
+        Context manager for database connections with timeout
 
         Yields:
             SQLAlchemy connection object
         """
-        engine = create_engine(self.db_url, connect_args={"connect_timeout": timeout})
+        engine = create_engine(
+            self.db_url, connect_args={"connect_timeout": 3}  # 设置连接超时为3秒
+        )
         try:
             with engine.connect() as connection:
                 yield connection
-        except (OperationalError, DatabaseError) as e:
+        except Exception as e:
             logger.error(f"Database connection error: {e}")
             raise
-
-    def wait_for_db(self, max_retries: int = 30, retry_interval: int = 3, timeout: int = 3) -> bool:
-        """
-        Wait for database to be ready
-
-        Args:
-            max_retries (int): Maximum number of retries
-            retry_interval (int): Interval between retries in seconds
-
-        Returns:
-            bool: True if database is ready, False otherwise
-        """
-        for i in range(max_retries):
-            try:
-                with self.database_connection(timeout=timeout):
-                    logger.info("Database is ready!")
-                    return True
-            except OperationalError:
-                logger.error(f"Database not ready, waiting... ({i+1}/{max_retries})")
-                time.sleep(retry_interval)
-        return False
 
     def check_migration_needed(self) -> Tuple[bool, str, str]:
         """
@@ -77,7 +56,7 @@ class DatabaseMigrator:
 
         if not heads:
             logger.warning("No migration heads found. Database might not be initialized.")
-            return True, current_rev or "None", "No heads found"
+            return True, current_rev or "None", "head"
 
         head_rev = heads[0]
         return current_rev != head_rev, current_rev or "None", head_rev
@@ -102,15 +81,16 @@ class DatabaseMigrator:
             Exception: If migration fails
         """
         try:
-            # First wait for database to be ready
-            self.wait_for_db()
-
             # Check if migration is needed
             needs_migration, current_rev, head_rev = self.check_migration_needed()
 
             if needs_migration:
                 logger.info(f"Current revision: {current_rev}, upgrading to: {head_rev}")
-                subprocess.run(["alembic", "upgrade", "head"])
+                self.alembic_cfg.set_main_option("sqlalchemy.url", self.db_url)
+
+                # 执行 alembic 升级
+                alembic_main(argv=["--raiseerr", "upgrade", "head"], config=self.alembic_cfg)
+
                 logger.info("Database migrations completed successfully")
             else:
                 logger.info(f"Database is already at the latest version: {current_rev}")
