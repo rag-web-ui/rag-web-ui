@@ -1,173 +1,172 @@
-# 🚀 十分钟搭建属于自己的 DeepSeek 知识库！完全开源、离线部署方案详解
+# 🚀 Build Your Own DeepSeek Knowledge Base in 10 Minutes! Fully Open Source & Offline Deployment Guide
 
-## 💡 序言
+## 💡 Introduction
 
-还在为高额的 ChatGPT Plus 订阅费用发愁吗？担心公司机密文档上传到云端吗？本教程将带你使用完全开源的工具，在本地搭建一个基于 RAG (Retrieval-Augmented Generation) 技术的智能知识库系统。不仅完全离线，还能保护隐私，让你的文档秘密更有保障！
+Tired of expensive ChatGPT Plus subscriptions? Worried about uploading confidential company documents to the cloud? This tutorial will guide you through building an intelligent knowledge base system locally using fully open-source tools based on RAG (Retrieval-Augmented Generation) technology. Enjoy complete offline deployment and privacy protection—keep your documents secure and confidential!
 
-## 🛠️ 环境准备
+## 🛠️ Environment Preparation
 
-在开始之前，请确保你的系统满足以下要求：
+Before you begin, make sure your system meets the following requirements:
 
-- 操作系统：Linux/macOS/Windows
-- RAM：至少 8GB (推荐 16GB 以上)
-- 硬盘空间：至少 20GB 可用空间
-- 已安装：
-  - [Docker & Docker Compose v2.0+](https://docs.docker.com/get-docker/)
-  - [Ollama](https://ollama.com/)
+- Operating System: Linux/macOS/Windows
+- RAM: At least 8GB (16GB or more recommended)
+- Disk Space: At least 20GB available
+- Installed:
+   - [Docker & Docker Compose v2.0+](https://docs.docker.com/get-docker/)
+   - [Ollama](https://ollama.com/)
 
-### 1. 安装 Ollama
+### 1. Install Ollama
 
-1. 访问 [Ollama 官网](https://ollama.com/) 下载并安装对应系统版本
-2. 验证安装：
+1. Visit the [Ollama official website](https://ollama.com/) to download and install the version for your operating system.
+2. Verify the installation:
 
 ````bash
 ollama --version
 ````
 
-### 2. 下载必要的模型
+### 2. Download Required Models
 
-我们需要两个模型：
+You will need two models:
 
-- deepseek-r1:7b 用于对话生成
-- nomic-embed-text 用于文本向量化
+- `deepseek-r1:7b` for conversational generation
+- `nomic-embed-text` for text embedding
 
-执行以下命令下载模型：
+Run the following commands to download the models:
 
 ````bash
-# 下载对话模型
+# Download the conversational model
 ollama pull deepseek-r1:7b
 
-# 下载向量模型  
+# Download the embedding model
 ollama pull nomic-embed-text
 ````
 
-## 🔧 部署知识库系统
+## 🔧 Deploy the Knowledge Base System
 
-### 1. 克隆项目
+### 1. Clone the Project
 
 ````bash
 git clone https://github.com/rag-web-ui/rag-web-ui.git
 cd rag-web-ui
 ````
 
-### 2. 配置环境变量
+### 2. Configure Environment Variables
 
-复制环境变量模板并编辑：
+Copy the environment variable template and edit it:
 
 ````bash
 cp .env.example .env
 ````
 
-编辑 .env 文件，配置如下：
+Edit the `.env` file as follows:
 
 ````env
-# LLM 配置
+# LLM Configuration
 CHAT_PROVIDER=ollama
 OLLAMA_API_BASE=http://host.docker.internal:11434
 OLLAMA_MODEL=deepseek-r1:7b
-# Embedding 配置
+# Embedding Configuration
 EMBEDDINGS_PROVIDER=ollama
 OLLAMA_EMBEDDINGS_MODEL=nomic-embed-text
 
-# 向量数据库配置
+# Vector Database Configuration
 VECTOR_STORE_TYPE=chroma
 CHROMA_DB_HOST=chromadb
 CHROMA_DB_PORT=8000
 
-# MySQL 配置
+# MySQL Configuration
 MYSQL_SERVER=db
 MYSQL_USER=ragwebui
 MYSQL_PASSWORD=ragwebui
 MYSQL_DATABASE=ragwebui
 
-# MinIO 配置
+# MinIO Configuration
 MINIO_ENDPOINT=minio:9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
 MINIO_BUCKET_NAME=documents
 ````
 
-注意：这里使用的是 Docker Compose 的服务名而不是 localhost，这样容器之间才能正确通信。
+Note: Here we use Docker Compose service names instead of localhost so that containers can communicate with each other correctly.
 
-### 3. 启动服务
+### 3. Start the Services
 
-使用 Docker Compose 启动所有服务：
+Use Docker Compose to start all services:
 
 ````bash
 docker compose up -d --build
 ````
 
-这将启动以下服务：
+This will start the following services:
 
-- 前端界面 (Next.js)
-- 后端 API (FastAPI)
-- MySQL 数据库
-- ChromaDB 向量数据库
-- MinIO 对象存储
-- Ollama 服务
+- Frontend (Next.js)
+- Backend API (FastAPI)
+- MySQL Database
+- ChromaDB Vector Database
+- MinIO Object Storage
+- Ollama Service
 
-### 4. 验证部署
+### 4. Verify Deployment
 
-服务启动后，可以通过以下地址访问：
+Once the services are running, you can access them at:
 
-- 前端界面：<http://localhost:3000>
-- API 文档：<http://localhost:8000/redoc>
-- MinIO 控制台：<http://localhost:9001>
+- Frontend: <http://localhost:3000>
+- API Docs: <http://localhost:8000/redoc>
+- MinIO Console: <http://localhost:9001>
 
-## 📚 使用指南
+## 📚 User Guide
 
-### 1. 创建知识库
+### 1. Create a Knowledge Base
 
-1. 访问 <http://localhost:3000>
-2. 登录后，点击"创建知识库"
-3. 填写知识库名称和描述
-4. 上传文档，选择切片方式和大小
-5. 点击"创建"
-6. 等待文档处理完成
+1. Visit <http://localhost:3000>
+2. Log in and click "Create Knowledge Base"
+3. Enter the knowledge base name and description
+4. Upload documents, select chunking method and size
+5. Click "Create"
+6. Wait for document processing to complete
 
-支持以下格式：
+Supported formats:
 
 - PDF
 - DOCX
 - Markdown
 - Text
 - ...
+### 2. Start a Conversation
 
-### 2. 开始对话
+1. Click "Start Conversation"
+2. Enter your question
+3. The system will automatically:
+   - Retrieve relevant document fragments
+   - Use the deepseek-r1:7b model to generate an answer
+   - Display the cited sources
 
-1. 点击"开始对话"
-2. 输入问题
-3. 系统会自动：
-   - 检索相关文档片段
-   - 使用 deepseek-r1:7b 模型生成回答
-   - 显示引用来源
+## ❓ Frequently Asked Questions
 
-## ❓ 常见问题
+1. Ollama service cannot connect
+   - Check if Ollama is running: `ollama list`
+   - Check if Docker network configuration is correct
 
-1. Ollama 服务无法连接
-   - 检查 Ollama 是否正常运行：`ollama list`
-   - 检查 Docker 网络配置是否正确
+2. Document processing failed
+   - Check if the document format is supported
+   - View backend logs: `docker compose logs -f backend`
 
-2. 文档处理失败
-   - 检查文档格式是否支持
-   - 查看后端日志：`docker compose logs -f backend`
+3. Out of memory
+   - Adjust Docker container memory limits
+   - Consider using a smaller model
 
-3. 内存不足
-   - 调整 Docker 容器内存限制
-   - 考虑使用更小的模型
+> 💡 Performance & Security Tips: It is recommended that a single document does not exceed 10MB. Regularly back up your data and change default passwords promptly to ensure system security.
 
-> 💡 性能与安全提示：建议单个文档不超过 10MB，定期备份数据，并及时修改默认密码以确保系统安全。
+## 🎯 Conclusion
 
-## 🎯 结语
+By following the above steps, you have successfully set up a local knowledge base system based on RAG technology. This system is fully deployed locally, so you don't need to worry about data privacy issues. With the power of Ollama, you can achieve high-quality knowledge Q&A services.
 
-通过以上步骤，你已经成功搭建了一个基于 RAG 技术的本地知识库系统。该系统完全本地化部署，无需担心数据隐私问题，同时借助 Ollama 的能力，可以实现高质量的知识问答服务。
+Note: This system is mainly for learning and personal use. For production environments, further security and stability optimizations are required.
 
-需要注意的是，这个系统主要用于学习和个人使用，如果要用于生产环境，还需要进行更多的安全性和稳定性优化。
+## 📚 References
 
-## 📚 参考资源
+- [Ollama Official Documentation](https://ollama.com/)
+- [RAG Web UI Project](https://github.com/rag-web-ui/rag-web-ui)
+- [Docker Documentation](https://docs.docker.com/)
 
-- [Ollama 官方文档](https://ollama.com/)
-- [RAG Web UI 项目](https://github.com/rag-web-ui/rag-web-ui)
-- [Docker 文档](https://docs.docker.com/)
-
-希望这个教程对你搭建个人知识库有所帮助！如果遇到问题，欢迎查阅项目文档或在 GitHub 上提出 issue。
+Hope this tutorial helps you build your personal knowledge base! If you encounter any issues, please refer to the project documentation or open an issue on GitHub.
