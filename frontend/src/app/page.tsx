@@ -7,7 +7,7 @@ export default function Home() {
         {/* Hero Section */}
         <div className="text-center space-y-8 mb-24">
           <h1 className="text-6xl sm:text-7xl font-bold tracking-tight text-black">
-            RAG Web UI
+            AiMate
           </h1>
           <p className="text-xl sm:text-2xl text-gray-500 max-w-3xl mx-auto font-light leading-relaxed">
             Experience the next generation of AI interaction.
