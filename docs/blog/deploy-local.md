@@ -110,7 +110,7 @@ This will start the following services:
 
 Once the services are running, you can access them at:
 
-- Frontend: <http://localhost:3000>
+- Frontend: <http://localhost:80>
 - API Docs: <http://localhost:8000/redoc>
 - MinIO Console: <http://localhost:9001>
 
