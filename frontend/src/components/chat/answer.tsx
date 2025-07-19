@@ -49,7 +49,7 @@ export const Answer: FC<{
 
   const processedMarkdown = useMemo(() => {
     return markdown
-      .replace(/<think>/g, "## 💭 深度思考\n```think")
+      .replace(/<think>/g, "## 💭 chatbot\n```think")
       .replace(/<\/think>/g, "```");
   }, [markdown]);
 

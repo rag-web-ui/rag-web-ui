@@ -31,27 +31,92 @@ export default function KnowledgeBasePage() {
     <DashboardLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Knowledge Base</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusIcon className="w-4 h-4 mr-2" />
-              Add Document
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Add Document</DialogTitle>
-              <DialogDescription>
-                Upload a document to your knowledge base. Supported formats:
-                PDF, DOCX, Markdown, and Text files.
-              </DialogDescription>
-            </DialogHeader>
-            <DocumentUploadSteps
-              knowledgeBaseId={knowledgeBaseId}
-              onComplete={handleUploadComplete}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex justify-between items-center gap-2">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Add Document
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Add Document</DialogTitle>
+                <DialogDescription>
+                  Upload a document to your knowledge base. Supported formats:
+                  PDF, DOCX, Markdown, and Text files.
+                </DialogDescription>
+              </DialogHeader>
+              <DocumentUploadSteps
+                knowledgeBaseId={knowledgeBaseId}
+                onComplete={handleUploadComplete}
+              />
+            </DialogContent>
+          </Dialog>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Add Video
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Add Video</DialogTitle>
+                <DialogDescription>
+                  Upload a document to your knowledge base. Supported formats:
+                  PDF, DOCX, Markdown, and Text files.
+                </DialogDescription>
+              </DialogHeader>
+              <DocumentUploadSteps
+                knowledgeBaseId={knowledgeBaseId}
+                onComplete={handleUploadComplete}
+              />
+            </DialogContent>
+          </Dialog>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Add Image
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Add Image</DialogTitle>
+                <DialogDescription>
+                  Upload a document to your knowledge base. Supported formats:
+                  PDF, DOCX, Markdown, and Text files.
+                </DialogDescription>
+              </DialogHeader>
+              <DocumentUploadSteps
+                knowledgeBaseId={knowledgeBaseId}
+                onComplete={handleUploadComplete}
+              />
+            </DialogContent>
+          </Dialog>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Add Source Code
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Add Source Code</DialogTitle>
+                <DialogDescription>
+                  Upload a document to your knowledge base. Supported formats:
+                  PDF, DOCX, Markdown, and Text files.
+                </DialogDescription>
+              </DialogHeader>
+              <DocumentUploadSteps
+                knowledgeBaseId={knowledgeBaseId}
+                onComplete={handleUploadComplete}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="mt-8">

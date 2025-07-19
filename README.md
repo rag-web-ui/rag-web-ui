@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./docs/images/github-cover-new.png" alt="RAG Web UI Demo">
+  <img src="./docs/images/github-cover-new.png" alt="AiMate Demo">
   <br />
   <p>
     <strong>Knowledge Base Management Based on RAG (Retrieval-Augmented Generation)</strong>

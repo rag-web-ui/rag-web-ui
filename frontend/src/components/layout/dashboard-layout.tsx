@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Book, MessageSquare, LogOut, Menu, User } from "lucide-react";
+import { Book, MessageSquare, Bot, LogOut, Menu, User } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
 
 export default function DashboardLayout({
@@ -30,6 +30,7 @@ export default function DashboardLayout({
   const navigation = [
     { name: "Knowledge Base", href: "/dashboard/knowledge", icon: Book },
     { name: "Chatbot", href: "/dashboard/chat", icon: MessageSquare },
+    { name: "AI Agent", href: "/dashboard/ai-agent", icon: Bot },
     { name: "API Keys", href: "/dashboard/api-keys", icon: User },
   ];
 
@@ -63,7 +64,7 @@ export default function DashboardLayout({
                 alt="Logo"
                 className="w-16 h-16 rounded-lg"
               />
-              RAG Web UI
+              AiMate
             </Link>
           </div>
 
