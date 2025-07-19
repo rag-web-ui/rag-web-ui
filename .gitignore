@@ -21,7 +21,7 @@ wheels/
 .pytest_cache/
 .coverage
 htmlcov/
-.env
+# .env
 .venv
 env/
 venv/
