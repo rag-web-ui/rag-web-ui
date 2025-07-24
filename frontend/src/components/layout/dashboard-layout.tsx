@@ -31,7 +31,7 @@ export default function DashboardLayout({
     { name: "Knowledge Base", href: "/dashboard/knowledge", icon: Book },
     { name: "Chatbot", href: "/dashboard/chat", icon: MessageSquare },
     { name: "AI Agent", href: "/dashboard/ai-agent", icon: Bot },
-    { name: "API Keys", href: "/dashboard/api-keys", icon: User },
+    // { name: "API Keys", href: "/dashboard/api-keys", icon: User },
   ];
 
   return (

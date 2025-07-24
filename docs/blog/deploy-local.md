@@ -35,7 +35,11 @@ Run the following commands to download the models:
 
 ````bash
 # Download the conversational model
+ollama list 
 ollama pull deepseek-r1:7b
+ollama pull llama3.1:8b
+ollama run llama3.1:8b
+
 
 # Download the embedding model
 ollama pull nomic-embed-text

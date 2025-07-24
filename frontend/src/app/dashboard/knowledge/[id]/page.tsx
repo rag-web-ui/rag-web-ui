@@ -3,6 +3,8 @@
 import { useParams } from "next/navigation";
 import { useState, useCallback } from "react";
 import { DocumentUploadSteps } from "@/components/knowledge-base/document-upload-steps";
+import { DocumentVideoUploadSteps } from "@/components/knowledge-base/document-video-upload-steps";
+import { DocumentImageUploadSteps } from "@/components/knowledge-base/document-image-upload-steps";
 import { DocumentList } from "@/components/knowledge-base/document-list";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,11 +66,10 @@ export default function KnowledgeBasePage() {
               <DialogHeader>
                 <DialogTitle>Add Video</DialogTitle>
                 <DialogDescription>
-                  Upload a document to your knowledge base. Supported formats:
-                  PDF, DOCX, Markdown, and Text files.
+                  Upload your video link here (e.g., YouTube, Vimeo, etc.) to add it to your knowledge base.
                 </DialogDescription>
               </DialogHeader>
-              <DocumentUploadSteps
+              <DocumentVideoUploadSteps
                 knowledgeBaseId={knowledgeBaseId}
                 onComplete={handleUploadComplete}
               />
@@ -85,11 +86,10 @@ export default function KnowledgeBasePage() {
               <DialogHeader>
                 <DialogTitle>Add Image</DialogTitle>
                 <DialogDescription>
-                  Upload a document to your knowledge base. Supported formats:
-                  PDF, DOCX, Markdown, and Text files.
+                  Upload an image to your knowledge base. Supported formats: PNG, JPG, JPEG, GIF, and other common image files.
                 </DialogDescription>
               </DialogHeader>
-              <DocumentUploadSteps
+              <DocumentImageUploadSteps
                 knowledgeBaseId={knowledgeBaseId}
                 onComplete={handleUploadComplete}
               />
