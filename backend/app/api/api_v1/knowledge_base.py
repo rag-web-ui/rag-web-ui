@@ -573,3 +573,284 @@ async def test_retrieval(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{kb_id}/videos/upload")
+async def upload_video_urls(
+    kb_id: int,
+    request: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload videos from URLs"""
+    from app.services.video_processor import download_video_from_url
+
+    kb = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.user_id == current_user.id
+    ).first()
+
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+
+    urls = request.get("urls", [])
+    if not urls:
+        raise HTTPException(status_code=400, detail="No URLs provided")
+
+    results = []
+
+    for url in urls:
+        try:
+            # Validate URL format
+            if not url.startswith(('http://', 'https://')):
+                results.append({
+                    "file_name": url,
+                    "status": "error",
+                    "message": "Invalid URL format",
+                    "skip_processing": True
+                })
+                continue
+
+            # Download and upload video
+            result = await download_video_from_url(url, kb_id, db)
+            results.append(result)
+
+        except Exception as e:
+            logger.error(f"Failed to process URL {url}: {str(e)}")
+            results.append({
+                "file_name": url,
+                "status": "error",
+                "message": str(e),
+                "skip_processing": True
+            })
+
+    return results
+
+@router.post("/{kb_id}/videos/upload-files")
+async def upload_video_files(
+    kb_id: int,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload video files for transcription"""
+    kb = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.user_id == current_user.id
+    ).first()
+    
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    
+    results = []
+    
+    for file in files:
+        # Validate video file
+        if not file.content_type.startswith('video/'):
+            raise HTTPException(status_code=400, detail=f"File {file.filename} is not a video file")
+        
+        # Read file content
+        file_content = await file.read()
+        file_hash = hashlib.sha256(file_content).hexdigest()
+        
+        # Check for duplicates
+        existing_upload = db.query(DocumentUpload).filter(
+            DocumentUpload.knowledge_base_id == kb_id,
+            DocumentUpload.file_hash == file_hash
+        ).first()
+        
+        if existing_upload:
+            results.append({
+                "upload_id": existing_upload.id,
+                "file_name": file.filename,
+                "status": "exists",
+                "message": "Video already exists",
+                "skip_processing": True
+            })
+            continue
+        
+        # Upload to MinIO
+        temp_path = f"kb_{kb_id}/videos/temp/{file.filename}"
+        await file.seek(0)
+        
+        try:
+            minio_client = get_minio_client()
+            minio_client.put_object(
+                bucket_name=settings.MINIO_BUCKET_NAME,
+                object_name=temp_path,
+                data=file.file,
+                length=len(file_content),
+                content_type=file.content_type
+            )
+        except MinioException as e:
+            logger.error(f"Failed to upload video to MinIO: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to upload video")
+        
+        # Create upload record
+        upload = DocumentUpload(
+            knowledge_base_id=kb_id,
+            file_name=file.filename,
+            file_hash=file_hash,
+            file_size=len(file_content),
+            content_type=file.content_type,
+            temp_path=temp_path
+        )
+        db.add(upload)
+        db.commit()
+        db.refresh(upload)
+        
+        results.append({
+            "upload_id": upload.id,
+            "file_name": file.filename,
+            "temp_path": temp_path,
+            "status": "pending",
+            "skip_processing": False
+        })
+    
+    return results
+
+@router.post("/{kb_id}/videos/transcribe")
+async def transcribe_videos(
+    kb_id: int,
+    upload_results: List[dict],
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Transcribe videos and create text documents"""
+    from app.services.video_processor import transcribe_video_background
+    
+    kb = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.user_id == current_user.id
+    ).first()
+    
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    
+    task_info = []
+    
+    for result in upload_results:
+        if result.get("skip_processing"):
+            continue
+            
+        upload_id = result["upload_id"]
+        upload = db.query(DocumentUpload).filter(DocumentUpload.id == upload_id).first()
+        
+        if not upload:
+            continue
+        
+        # Create processing task
+        task = ProcessingTask(
+            knowledge_base_id=kb_id,
+            document_upload_id=upload_id,
+            status="pending"
+        )
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        
+        task_info.append({
+            "upload_id": upload_id,
+            "task_id": task.id
+        })
+        
+        # Start transcription in background
+        background_tasks.add_task(
+            transcribe_video_background,
+            upload.temp_path,
+            upload.file_name,
+            kb_id,
+            task.id,
+            upload_id
+        )
+    
+    return {"tasks": task_info}
+
+@router.post("/{kb_id}/videos/preview")
+async def preview_video_transcripts(
+    kb_id: int,
+    request: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Preview video transcripts (placeholder - videos need to be transcribed first)"""
+    kb = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.user_id == current_user.id
+    ).first()
+
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+
+    document_ids = request.get("document_ids", [])
+    chunk_size = request.get("chunk_size", 1000)
+    chunk_overlap = request.get("chunk_overlap", 200)
+
+    # For videos, we return a placeholder since transcription happens during processing
+    return {
+        "chunks": [
+            {
+                "content": "Video transcription will be available after processing.",
+                "metadata": {
+                    "chunk_size": chunk_size,
+                    "chunk_overlap": chunk_overlap,
+                    "type": "video_placeholder"
+                }
+            }
+        ],
+        "total_chunks": 1
+    }
+
+@router.post("/{kb_id}/videos/process")
+async def process_videos(
+    kb_id: int,
+    upload_results: List[dict],
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Process videos (alias for transcribe_videos for frontend compatibility)"""
+    return await transcribe_videos(kb_id, upload_results, background_tasks, db, current_user)
+
+@router.get("/{kb_id}/videos/tasks")
+async def get_video_processing_tasks(
+    kb_id: int,
+    task_ids: str = Query(..., description="Comma-separated list of task IDs to check status for"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get status of video processing tasks.
+    """
+    # Verify knowledge base ownership
+    kb = db.query(KnowledgeBase).filter(
+        KnowledgeBase.id == kb_id,
+        KnowledgeBase.user_id == current_user.id
+    ).first()
+
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+
+    # Parse task IDs
+    try:
+        task_id_list = [int(tid.strip()) for tid in task_ids.split(',') if tid.strip()]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid task ID format")
+
+    # Get tasks
+    tasks = db.query(ProcessingTask).filter(
+        ProcessingTask.id.in_(task_id_list),
+        ProcessingTask.knowledge_base_id == kb_id
+    ).all()
+
+    return {
+        task.id: {
+            "document_id": task.document_id,
+            "status": task.status,
+            "error_message": task.error_message,
+            "upload_id": task.document_upload_id,
+            "file_name": task.document_upload.file_name if task.document_upload else None
+        }
+        for task in tasks
+    }
+

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from langchain_openai import ChatOpenAI
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
 from app.core.config import settings
 from app.models.chat import Message
@@ -103,7 +103,7 @@ async def generate_response(
             contextualize_q_prompt
         )
 
-        # Create QA prompt
+        # Create QA prompt - Fixed for LangChain compatibility
         qa_system_prompt = (
             "You are given a user question, and please write clean, concise and accurate answer to the question. "
             "You will be given a set of related contexts to the question, which are numbered sequentially starting from 1. "
@@ -114,7 +114,7 @@ async def generate_response(
             "Say 'information is missing on' followed by the related topic, if the given context do not provide sufficient information. "
             "If a sentence draws from multiple contexts, please list all applicable citations, like [citation:1][citation:2]. "
             "Other than code and specific names and citations, your answer must be written in the same language as the question. "
-            "Be concise.\n\nContext: {context}\n\n"
+            "Be concise.\n\n{context}\n\n"
             "Remember: Cite contexts by their position number (1 for first context, 2 for second, etc.) and don't blindly "
             "repeat the contexts verbatim."
         )
@@ -124,15 +124,10 @@ async def generate_response(
             ("human", "{input}")
         ])
 
-        # 修改 create_stuff_documents_chain 来自定义 context 格式
-        document_prompt = PromptTemplate.from_template("\n\n- {page_content}\n\n")
-
-        # Create QA chain
+        # Create QA chain - Fixed for LangChain compatibility
         question_answer_chain = create_stuff_documents_chain(
             llm,
-            qa_prompt,
-            document_variable_name="context",
-            document_prompt=document_prompt
+            qa_prompt
         )
 
         # Create retrieval chain

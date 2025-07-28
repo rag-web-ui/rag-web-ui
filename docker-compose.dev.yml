@@ -37,6 +37,7 @@ services:
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads
+      - video_temp:/tmp/video_processing  # Temporary storage for video processing
     networks:
       - app_network
     depends_on:
@@ -122,6 +123,7 @@ volumes:
   mysql_data:
   chroma_data:
   minio_data:
+  video_temp:  # Temporary storage for video processing
 
 networks:
   app_network:

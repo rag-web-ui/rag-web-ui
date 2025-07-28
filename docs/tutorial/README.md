@@ -1,5 +1,16 @@
 # Zero to Hero: How to Build a Knowledge Base QA System with RAG (Retrieval-Augmented Generation)
 
+## 📚 Tutorial Index
+
+### Core Tutorials
+
+- **[Video Processing Tutorial](./video-processing-tutorial.md)** - Complete guide to uploading and processing YouTube videos and local video files
+- **[RAG System Tutorial](#1-understanding-rag-why-retrieval--generation)** - Understanding and building RAG systems (this document)
+
+### Test Documentation
+
+- **[Video Processing Tests](../test/video-processing-tests.md)** - Test cases and validation procedures for video functionality
+
 ## Preface
 
 As this year is coming to an end, this project was initiated in January 2025 as a leisure-time educational endeavor.
@@ -15,40 +26,40 @@ graph TB
   %% Role Definitions
   client["Caller/User"]
   open_api["Open API"]
-  
+
   subgraph import_process["Document Ingestion Process"]
     direction TB
     %% File Storage and Document Processing Flow
     docs["Document Input<br/>(PDF/MD/TXT/DOCX)"]
     job_id["Return Job ID"]
-    
+
     nfs["NFS"]
 
     subgraph async_process["Asynchronous Document Processing"]
       direction TB
       preprocess["Document Preprocessing<br/>(Text Extraction/Cleaning)"]
       split["Text Splitting<br/>(Segmentation/Overlap)"]
-      
+
       subgraph embedding_process["Embedding Service"]
         direction LR
         embedding_api["Embedding API"] --> embedding_server["Embedding Server"]
       end
-      
+
       store[(Vector Database)]
-      
+
       %% Internal Flow of Asynchronous Processing
       preprocess --> split
       split --> embedding_api
       embedding_server --> store
     end
-    
+
     subgraph job_query["Job Status Query"]
       direction TB
       job_status["Job Status<br/>(Processing/Completed/Failed)"]
     end
   end
-  
-  %% Query Service Flow  
+
+  %% Query Service Flow
   subgraph query_process["Query Service"]
     direction LR
     user_history["User History"] --> query["User Query<br/>(Based on User History)"]
@@ -60,7 +71,7 @@ graph TB
     llm --> response["Final Response"]
     query -.-> rerank
   end
-  
+
   %% Main Flow Connections
   client --> |"1.Upload Document"| docs
   docs --> |"2.Generate"| job_id
@@ -77,7 +88,7 @@ graph TB
   %% Status Query Flow
   client --> |"4.Poll"| job_status
   job_status --> |"5.Return Progress"| client
-  
+
   %% Database connects to Query Service
   store --> retrieve
 
@@ -144,12 +155,14 @@ flowchart TD
 Let's compare the pros and cons of three QA approaches to understand why RAG is a better choice:
 
 1. Traditional Retrieval QA
+
    - ✅ High reliability: Answers come directly from the knowledge base with clear sources
    - ✅ Knowledge is updatable: Add new documents to update knowledge
    - ❌ Low flexibility: Can only return content already in the knowledge base
    - ❌ Rigid expression: Hard to organize answers in natural language
 
 2. Pure LLM QA
+
    - ✅ Natural expression: Answers are fluent and well-organized
    - ✅ Flexible understanding: Can comprehend various ways of asking questions
    - ❌ Knowledge is static: Limited to training data, cannot be updated in real time
@@ -182,11 +195,11 @@ Typical RAG application scenarios:
 
 ### 2.2 Typical RAG Workflow
 
-1) User submits a question.
-2) The question is vectorized, and the most similar document chunks are retrieved.
-3) The retrieved context and the question are concatenated and sent to the LLM.
-4) The LLM outputs an answer with citation information.
-5) The frontend renders the answer, optionally displaying citation details in the UI.
+1. User submits a question.
+2. The question is vectorized, and the most similar document chunks are retrieved.
+3. The retrieved context and the question are concatenated and sent to the LLM.
+4. The LLM outputs an answer with citation information.
+5. The frontend renders the answer, optionally displaying citation details in the UI.
 
 The following diagram shows the interaction between each component:
 
@@ -217,53 +230,53 @@ Chunking is a key step in RAG systems for several reasons:
 
 1. Precision of Vector Similarity Calculation
 
-  - Long texts lead to less precise vector representations
-  - Smaller chunks better capture local semantics
-  - Improves retrieval accuracy
+- Long texts lead to less precise vector representations
+- Smaller chunks better capture local semantics
+- Improves retrieval accuracy
 
 2. LLM Context Window Limitations
 
-  - LLMs have limited input length (even though models like Qwen now support up to 1M tokens)
-  - Documents need to be split into manageable sizes for LLMs
-  - Prevents information loss due to token limits
+- LLMs have limited input length (even though models like Qwen now support up to 1M tokens)
+- Documents need to be split into manageable sizes for LLMs
+- Prevents information loss due to token limits
 
 3. Retrieval Efficiency and Cost
 
-  - Smaller chunks allow for fine-grained indexing
-  - Only the most relevant chunks are retrieved, saving tokens
-  - Reduces irrelevant information and improves answer quality
+- Smaller chunks allow for fine-grained indexing
+- Only the most relevant chunks are retrieved, saving tokens
+- Reduces irrelevant information and improves answer quality
 
 4. Citation and Traceability (a unique feature of RAG)
 
-  - Makes it easier to locate the exact source of information
-  - Enables more precise citation ranges
-  - Helps users verify the reliability of answers
+- Makes it easier to locate the exact source of information
+- Enables more precise citation ranges
+- Helps users verify the reliability of answers
 
 #### 3.1.2 Common Chunking Strategies
 
 1. Fixed-Length Chunking
 
-  - Split by character or token count
-  - Simple to implement, but may break semantic units
-  - Suitable for uniformly structured documents
+- Split by character or token count
+- Simple to implement, but may break semantic units
+- Suitable for uniformly structured documents
 
 2. Semantic Chunking
 
-  - Split by natural semantic units like paragraphs or sections
-  - Maintains contextual coherence
-  - Requires consideration of document structure
+- Split by natural semantic units like paragraphs or sections
+- Maintains contextual coherence
+- Requires consideration of document structure
 
 3. Overlapping Chunking
 
-  - Adjacent chunks retain some overlap
-  - Prevents key information from being split
-  - Increases storage and computation overhead
+- Adjacent chunks retain some overlap
+- Prevents key information from being split
+- Increases storage and computation overhead
 
 4. Recursive Chunking
 
-  - Start with large chunks, then subdivide
-  - Maintains hierarchical structure
-  - Suitable for processing long documents
+- Start with large chunks, then subdivide
+- Maintains hierarchical structure
+- Suitable for processing long documents
 
 Choosing the right chunking strategy depends on:
 
@@ -321,17 +334,17 @@ Common text embedding models include:
 
 1. OpenAI Embeddings
 
-  - text-embedding-ada-002 model
-  - 1536-dimensional vector output
-  - Suitable for English and multiple languages
-  - Strong semantic representation capability
+- text-embedding-ada-002 model
+- 1536-dimensional vector output
+- Suitable for English and multiple languages
+- Strong semantic representation capability
 
 2. Sentence Transformers
 
-  - Open-source sentence-level encoders
-  - Support multiple languages
-  - Can be fine-tuned for specific scenarios
-  - High computational efficiency
+- Open-source sentence-level encoders
+- Support multiple languages
+- Can be fine-tuned for specific scenarios
+- High computational efficiency
 
 In RAG Web UI, the main model used is OpenAI's text-embedding-ada-002.
 
@@ -381,24 +394,24 @@ ChromaDB supports multiple similarity calculation methods:
 
 1. Cosine Similarity
 
-  - Calculates the cosine of the angle between two vectors
-  - Value range is [-1, 1]; closer to 1 means more similar
-  - Not affected by vector length, only considers direction
-  - Formula: cos(θ) = (A·B)/(||A||·||B||)
+- Calculates the cosine of the angle between two vectors
+- Value range is [-1, 1]; closer to 1 means more similar
+- Not affected by vector length, only considers direction
+- Formula: cos(θ) = (A·B)/(||A||·||B||)
 
 2. L2 Distance (Euclidean Distance)
 
-  - Calculates the straight-line distance between two vectors
-  - Smaller values mean more similar
-  - Affected by vector length
-  - Formula: d = √(Σ(ai-bi)²)
+- Calculates the straight-line distance between two vectors
+- Smaller values mean more similar
+- Affected by vector length
+- Formula: d = √(Σ(ai-bi)²)
 
 3. IP (Inner Product)
 
-  - Sums the products of corresponding positions in two vectors
-  - Larger values mean more similar
-  - Affected by vector length
-  - Formula: IP = Σ(ai×bi)
+- Sums the products of corresponding positions in two vectors
+- Larger values mean more similar
+- Affected by vector length
+- Formula: IP = Σ(ai×bi)
 
 ChromaDB uses Cosine Similarity by default, which is also the most commonly used similarity calculation method because:
 
@@ -420,27 +433,27 @@ Re-ranking is an important step that can significantly improve the quality of re
 
 1. Initial Retrieval
 
-  - First, use vector similarity search to recall a batch of candidate documents (e.g., top 20-100)
-  - This step is fast but may not be precise enough
+- First, use vector similarity search to recall a batch of candidate documents (e.g., top 20-100)
+- This step is fast but may not be precise enough
 
 2. Cross-Encoder Re-ranking
 
-  - Further score the relevance of the recalled candidate documents
-  - The Cross-Encoder sees both the query and document content to compute their matching degree
-  - Compared to vector similarity, it can better understand semantic associations
-  - However, it is computationally expensive, so it is only used to re-rank a small number of candidates
+- Further score the relevance of the recalled candidate documents
+- The Cross-Encoder sees both the query and document content to compute their matching degree
+- Compared to vector similarity, it can better understand semantic associations
+- However, it is computationally expensive, so it is only used to re-rank a small number of candidates
 
 3. Application Scenarios
 
-  - Multi-path recall: Results from different retrieval methods need unified ranking
-  - High-precision requirements: More accurate relevance ranking is needed
-  - Complex queries: Simple vector similarity may not be enough to understand query intent
+- Multi-path recall: Results from different retrieval methods need unified ranking
+- High-precision requirements: More accurate relevance ranking is needed
+- Complex queries: Simple vector similarity may not be enough to understand query intent
 
 4. Common Implementations
 
-  - Use pre-trained Cross-Encoder models (such as BERT)
-  - Can be fine-tuned for specific tasks
-  - Output relevance scores for re-ranking
+- Use pre-trained Cross-Encoder models (such as BERT)
+- Can be fine-tuned for specific tasks
+- Output relevance scores for re-ranking
 
 Although re-ranking increases some latency, this cost is usually worthwhile in scenarios with high accuracy requirements.
 
@@ -454,10 +467,10 @@ Here are some common concatenation strategies:
 
 1. Basic Structure
 
-  - System: System instructions that define the AI assistant's role and task
-  - Context: Retrieved relevant document chunks
-  - Human: The user's actual question
-  - Assistant: The AI's answer
+- System: System instructions that define the AI assistant's role and task
+- Context: Retrieved relevant document chunks
+- Human: The user's actual question
+- Assistant: The AI's answer
 
 2. Concatenation Techniques
 
@@ -541,11 +554,13 @@ sequenceDiagram
 ```
 
 1. User uploads a document (PDF/MD/TXT/DOCX)
+
    - The client initiates a document upload request.
    - The document is temporarily stored in NFS (Network File System).
    - The system generates and returns a Job ID to the client.
 
 2. Asynchronous processing flow starts
+
    - Document preprocessing: extract text and clean data.
    - Text chunking: split the text according to the configured strategy.
    - Vectorization: convert text into vectors using the embedding service.
@@ -590,19 +605,19 @@ sequenceDiagram
 
   User->>Frontend: Send question
   Frontend->>Backend: Send request
-  
+
   rect rgb(200, 220, 250)
     Note over Backend: Message Storage Phase
     Backend->>DB: Store user question (user type)
     Backend->>DB: Create empty assistant record
   end
-  
+
   rect rgb(200, 250, 220)
     Note over Backend: Knowledge Base Preparation Phase
     Backend->>VectorStore: Initialize vector store
     Backend->>VectorStore: Retrieve relevant knowledge bases
   end
-  
+
   rect rgb(250, 220, 200)
     Note over Backend: RAG Processing Phase
     Backend->>VectorStore: Perform similarity search
@@ -612,35 +627,39 @@ sequenceDiagram
     Backend->>LLM: Send final generation request
     LLM-->>Backend: Stream answer response
   end
-  
+
   Backend-->>Frontend: Stream response (context + answer)
-  
+
   rect rgb(220, 220, 250)
     Note over Frontend: Response Handling Phase
     Frontend->>Frontend: Parse context (base64)
     Frontend->>Frontend: Parse citation markers
     Frontend->>Frontend: Render answer and citations
   end
-  
+
   Frontend-->>User: Display answer and citations
 ```
 
 1. **Message Storage**
+
    - Save the user's question as a message record of type `user`
    - Create an empty `assistant` type message record as a placeholder
 
 2. **Knowledge Base Preparation**
+
    - Retrieve relevant knowledge bases based on the provided `knowledge_base_ids`
    - Initialize OpenAI Embeddings
    - Create a vector store for each knowledge base
 
 3. **Retrieval-Augmented Generation (RAG) Processing**
+
    - Use the vector store to create a retriever
    - Build two key prompt templates:
    - `contextualize_q_prompt`: For understanding chat history and reconstructing a standalone question
    - `qa_prompt`: For generating the final answer, including citation formatting and language adaptation rules
 
 4. **Response Generation**
+
    - Process chat history to build conversation context
    - Use streaming responses to generate content incrementally
    - The response contains two parts:
@@ -648,6 +667,7 @@ sequenceDiagram
    - LLM-generated answer
 
 5. **Result Handling**
+
    - Return generated content fragments in real time
    - Update the `assistant` message record in the database
    - Complete response format: `{context_base64}__LLM_RESPONSE__{answer}`
@@ -666,16 +686,16 @@ flowchart TD
   A[Receive Stream Response] --> B{Parse Response}
   B -->|Split| C[Context Part]
   B -->|Split| D[Answer Part]
-  
+
   C --> E[Base64 Decode]
   E --> F[Parse Citation Info]
-  
+
   D --> G[Parse Citation Markers]
   G --> H[[citation:1]]
-  
+
   F --> I[Prepare Citation Data]
   H --> I
-  
+
   I --> J[Render Answer Content]
   J --> K[Show Citation Popup]
 ```
@@ -686,86 +706,84 @@ Code reference:
 - Citation display: `frontend/src/components/chat/answer.tsx`
 
 ```js
-  const CitationLink = useMemo(
+const CitationLink = useMemo(
   () =>
     (
-    props: ClassAttributes<HTMLAnchorElement> &
-      AnchorHTMLAttributes<HTMLAnchorElement>
+      props: ClassAttributes<HTMLAnchorElement> &
+        AnchorHTMLAttributes<HTMLAnchorElement>
     ) => {
-    const citationId = props.href?.match(/^(\d+)$/)?.[1];
-    const citation = citationId
-      ? citations[parseInt(citationId) - 1]
-      : null;
+      const citationId = props.href?.match(/^(\d+)$/)?.[1];
+      const citation = citationId ? citations[parseInt(citationId) - 1] : null;
 
-    if (!citation) {
-      return <a>[{props.href}]</a>;
-    }
+      if (!citation) {
+        return <a>[{props.href}]</a>;
+      }
 
-    const citationInfo =
-      citationInfoMap[
-      `${citation.metadata.kb_id}-${citation.metadata.document_id}`
-      ];
+      const citationInfo =
+        citationInfoMap[
+          `${citation.metadata.kb_id}-${citation.metadata.document_id}`
+        ];
 
-    return (
-      <Popover>
-      <PopoverTrigger asChild>
-        <a
-        {...props}
-        href="#"
-        role="button"
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors relative"
-        >
-        <span className="absolute -top-3 -right-1">[{props.href}]</span>
-        </a>
-      </PopoverTrigger>
-      <PopoverContent
-        side="top"
-        align="start"
-        className="max-w-2xl w-[calc(100vw-100px)] p-4 rounded-lg shadow-lg"
-      >
-        <div className="text-sm space-y-3">
-        {citationInfo && (
-          <div className="flex items-center gap-2 text-xs font-medium text-gray-700 bg-gray-50 p-2 rounded">
-          <div className="w-5 h-5 flex items-center justify-center">
-            <FileIcon
-            extension={
-              citationInfo.document.file_name.split(".").pop() || ""
-            }
-            color="#E2E8F0"
-            labelColor="#94A3B8"
-            />
-          </div>
-          <span className="truncate">
-            {citationInfo.knowledge_base.name} /{" "}
-            {citationInfo.document.file_name}
-          </span>
-          </div>
-        )}
-        <Divider />
-        <p className="text-gray-700 leading-relaxed">{citation.text}</p>
-        <Divider />
-        {Object.keys(citation.metadata).length > 0 && (
-          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-          <div className="font-medium mb-2">Debug Info:</div>
-          <div className="space-y-1">
-            {Object.entries(citation.metadata).map(([key, value]) => (
-            <div key={key} className="flex">
-              <span className="font-medium min-w-[100px]">
-              {key}:
-              </span>
-              <span className="text-gray-600">{String(value)}</span>
+      return (
+        <Popover>
+          <PopoverTrigger asChild>
+            <a
+              {...props}
+              href="#"
+              role="button"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors relative"
+            >
+              <span className="absolute -top-3 -right-1">[{props.href}]</span>
+            </a>
+          </PopoverTrigger>
+          <PopoverContent
+            side="top"
+            align="start"
+            className="max-w-2xl w-[calc(100vw-100px)] p-4 rounded-lg shadow-lg"
+          >
+            <div className="text-sm space-y-3">
+              {citationInfo && (
+                <div className="flex items-center gap-2 text-xs font-medium text-gray-700 bg-gray-50 p-2 rounded">
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    <FileIcon
+                      extension={
+                        citationInfo.document.file_name.split(".").pop() || ""
+                      }
+                      color="#E2E8F0"
+                      labelColor="#94A3B8"
+                    />
+                  </div>
+                  <span className="truncate">
+                    {citationInfo.knowledge_base.name} /{" "}
+                    {citationInfo.document.file_name}
+                  </span>
+                </div>
+              )}
+              <Divider />
+              <p className="text-gray-700 leading-relaxed">{citation.text}</p>
+              <Divider />
+              {Object.keys(citation.metadata).length > 0 && (
+                <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                  <div className="font-medium mb-2">Debug Info:</div>
+                  <div className="space-y-1">
+                    {Object.entries(citation.metadata).map(([key, value]) => (
+                      <div key={key} className="flex">
+                        <span className="font-medium min-w-[100px]">
+                          {key}:
+                        </span>
+                        <span className="text-gray-600">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            ))}
-          </div>
-          </div>
-        )}
-        </div>
-      </PopoverContent>
-      </Popover>
-    );
+          </PopoverContent>
+        </Popover>
+      );
     },
   [citations, citationInfoMap]
-  );
+);
 ```
 
 When the user clicks on a citation, a popup appears showing citation details, including the knowledge base name, file name, and the cited content.

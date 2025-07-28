@@ -26,3 +26,8 @@ dashscope>=1.13.6
 langchain-deepseek==0.1.1
 langchain-ollama==0.2.3
 docx2txt==0.8
+openai-whisper==20231117
+faster-whisper>=0.10.0
+ffmpeg-python==0.2.0
+yt-dlp>=2023.12.30
+requests>=2.31.0

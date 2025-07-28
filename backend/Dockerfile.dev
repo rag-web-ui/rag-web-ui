@@ -2,12 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including FFmpeg for video processing
 RUN apt-get update && apt-get install -y \
   build-essential \
   default-libmysqlclient-dev \
   pkg-config \
   netcat-traditional \
+  ffmpeg \
+  libavcodec-extra \
+  libavformat-dev \
+  libavutil-dev \
+  libswscale-dev \
+  libswresample-dev \
   && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file

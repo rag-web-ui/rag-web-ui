@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -24,6 +24,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useDropzone } from "react-dropzone";
 
 interface DocumentVideoUploadStepsProps {
   knowledgeBaseId: number;
@@ -86,6 +87,15 @@ interface TaskStatusResponse {
   [key: string]: TaskStatus;
 }
 
+interface VideoFile {
+  file: File;
+  status: "pending" | "uploading" | "uploaded" | "transcribing" | "completed" | "error";
+  uploadId?: number;
+  documentId?: number;
+  tempPath?: string;
+  error?: string;
+}
+
 export function DocumentVideoUploadSteps({
   knowledgeBaseId,
   onComplete,
@@ -105,10 +115,82 @@ export function DocumentVideoUploadSteps({
   const [chunkSize, setChunkSize] = useState(1000);
   const [chunkOverlap, setChunkOverlap] = useState(200);
   const [videoUrls, setVideoUrls] = useState("");
+  const [uploadMethod, setUploadMethod] = useState<"url" | "file">("url");
+  const [videoFiles, setVideoFiles] = useState<VideoFile[]>([]);
   const { toast } = useToast();
 
   const removeFile = (url: string) => {
     setFiles((prev) => prev.filter((f) => f.url !== url));
+  };
+
+  // Add dropzone for video files
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setVideoFiles((prev) => [
+      ...prev,
+      ...acceptedFiles.map((file) => ({
+        file,
+        status: "pending" as const,
+      })),
+    ]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "video/mp4": [".mp4"],
+      "video/avi": [".avi"],
+      "video/mov": [".mov"],
+      "video/wmv": [".wmv"],
+      "video/webm": [".webm"],
+    },
+  });
+
+  // Handle video file upload
+  const handleVideoFileUpload = async () => {
+    const pendingFiles = videoFiles.filter((f) => f.status === "pending");
+    if (pendingFiles.length === 0) return;
+
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      pendingFiles.forEach((videoFile) => {
+        formData.append("files", videoFile.file);
+      });
+
+      const data = await api.post(
+        `/api/knowledge-base/${knowledgeBaseId}/videos/upload-files`,
+        formData
+      );
+
+      setVideoFiles((prev) =>
+        prev.map((f) => {
+          const uploadResult = data.find((d: any) => d.file_name === f.file.name);
+          if (uploadResult) {
+            return {
+              ...f,
+              status: "uploaded",
+              uploadId: uploadResult.upload_id,
+              tempPath: uploadResult.temp_path,
+            };
+          }
+          return f;
+        })
+      );
+
+      setCurrentStep(2);
+      toast({
+        title: "Upload successful",
+        description: `${data.length} videos uploaded successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof ApiError ? error.message : "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Step 1: Upload video URLs
@@ -352,61 +434,109 @@ export function DocumentVideoUploadSteps({
         <TabsContent value="1" className="mt-6">
           <Card className="p-6">
             <div className="space-y-4">
-              {/* Thay dropzone bằng textarea nhập URL */}
-              <div>
-                <label htmlFor="video-urls" className="block mb-2 font-medium">
-                  Nhập đường dẫn video (mỗi dòng một link)
-                </label>
-                <textarea
-                  id="video-urls"
-                  rows={6}
-                  className="w-full border rounded-lg p-2"
-                  placeholder="https://example.com/video1.mp4&#10;https://example.com/video2.mp4"
-                  value={videoUrls}
-                  onChange={(e) => setVideoUrls(e.target.value)}
-                />
+              {/* Upload method selector */}
+              <div className="flex space-x-4 mb-4">
+                <Button
+                  variant={uploadMethod === "url" ? "default" : "outline"}
+                  onClick={() => setUploadMethod("url")}
+                >
+                  Upload by URL
+                </Button>
+                <Button
+                  variant={uploadMethod === "file" ? "default" : "outline"}
+                  onClick={() => setUploadMethod("file")}
+                >
+                  Upload Files
+                </Button>
               </div>
-              {files.length > 0 && (
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {files.map((fileStatus) => (
-                    <div
-                      key={fileStatus.url}
-                      className="flex items-center justify-between p-4 rounded-lg border"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{fileStatus.url}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {fileStatus.status === "uploaded" && (
-                          <span className="text-green-500 text-sm">
-                            Uploaded
-                          </span>
-                        )}
-                        {fileStatus.status === "error" && (
-                          <span className="text-red-500 text-sm">
-                            {fileStatus.error}
-                          </span>
-                        )}
-                        <button
-                          onClick={() => removeFile(fileStatus.url)}
-                          className="p-1 hover:bg-accent rounded-full"
+
+              {uploadMethod === "url" ? (
+                // Existing URL upload UI
+                <div>
+                  <label htmlFor="video-urls" className="block mb-2 font-medium">
+                    Nhập đường dẫn video (mỗi dòng một link)
+                  </label>
+                  <textarea
+                    id="video-urls"
+                    rows={6}
+                    className="w-full border rounded-lg p-2"
+                    placeholder="https://example.com/video1.mp4&#10;https://example.com/video2.mp4"
+                    value={videoUrls}
+                    onChange={(e) => setVideoUrls(e.target.value)}
+                  />
+                  <Button
+                    onClick={handleUrlUpload}
+                    disabled={!videoUrls.trim() || isLoading}
+                    className="w-full mt-4"
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Upload Videos
+                  </Button>
+                </div>
+              ) : (
+                // New file upload UI
+                <div>
+                  <div
+                    {...getRootProps()}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                      isDragActive ? "border-primary bg-primary/5" : "border-gray-300"
+                    }`}
+                  >
+                    <input {...getInputProps()} />
+                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <p className="text-lg font-medium mb-2">
+                      {isDragActive ? "Drop videos here" : "Upload video files"}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Drag & drop video files or click to browse
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Supported: MP4, AVI, MOV, WMV, WebM
+                    </p>
+                  </div>
+
+                  {videoFiles.length > 0 && (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto mt-4">
+                      {videoFiles.map((videoFile, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-4 rounded-lg border"
                         >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
+                          <div>
+                            <p className="text-sm font-medium">{videoFile.file.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {(videoFile.file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {videoFile.status === "uploaded" && (
+                              <span className="text-green-500 text-sm">Uploaded</span>
+                            )}
+                            {videoFile.status === "error" && (
+                              <span className="text-red-500 text-sm">{videoFile.error}</span>
+                            )}
+                            <button
+                              onClick={() => setVideoFiles(prev => prev.filter((_, i) => i !== index))}
+                              className="p-1 hover:bg-accent rounded-full"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  <Button
+                    onClick={handleVideoFileUpload}
+                    disabled={videoFiles.filter(f => f.status === "pending").length === 0 || isLoading}
+                    className="w-full mt-4"
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Upload Videos
+                  </Button>
                 </div>
               )}
-
-              <Button
-                onClick={handleUrlUpload}
-                disabled={!videoUrls.trim() || isLoading}
-                className="w-full"
-              >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Upload Videos
-              </Button>
             </div>
           </Card>
         </TabsContent>
