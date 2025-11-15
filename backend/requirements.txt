@@ -1,7 +1,6 @@
 fastapi>=0.104.1
 uvicorn>=0.24.0
 python-jose>=3.3.0
-passlib>=1.7.4
 python-multipart>=0.0.6
 langchain>=0.3.0
 langchain-community>=0.0.10
@@ -10,7 +9,7 @@ langchain-chroma>=0.0.5
 chromadb>=0.6.3
 langchain-qdrant>=0.2.0
 chroma-hnswlib>=0.7.3
-BCrypt>=4.0.1
+BCrypt==4.0.1
 SQLAlchemy>=2.0.23
 alembic>=1.12.1
 mysql-connector-python>=8.0.33
