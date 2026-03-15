@@ -6,7 +6,7 @@ import logging
 from app import models, schemas
 from app.db.session import get_db
 from app.services.api_key import APIKeyService
-from app.api.api_v1.auth import get_current_user
+from app.core.security import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
