@@ -27,7 +27,7 @@
 ## 📖 Introduction
 RAG Web UI is an intelligent dialogue system based on RAG (Retrieval-Augmented Generation) technology that helps build intelligent Q&A systems based on your own knowledge base. By combining document retrieval and large language models, it achieves accurate and reliable knowledge-based question answering services.
 
-The system supports multiple **LLM** deployment options, including cloud services like **OpenAI** and **DeepSeek**, as well as local model deployment through **Ollama**, meeting privacy and cost requirements in different scenarios.
+The system supports multiple **LLM** deployment options, including cloud services like **OpenAI**, **DeepSeek**, and **[MiniMax](https://www.minimax.io)**, as well as local model deployment through **Ollama**, meeting privacy and cost requirements in different scenarios.
 
 It also provides OpenAPI interfaces for convenient knowledge base access via API calls.
 
@@ -267,6 +267,9 @@ docker compose -f docker-compose.dev.yml up -d --build
 | DEEPSEEK_MODEL    | DeepSeek Model Name   | -                         | Required for DeepSeek |
 | OLLAMA_API_BASE   | Ollama API Base URL   | http://localhost:11434    | Required for Ollama   |
 | OLLAMA_MODEL      | Ollama Model Name     | llama2                    | Required for Ollama   |
+| MINIMAX_API_KEY   | MiniMax API Key       | -                         | Required for MiniMax  |
+| MINIMAX_API_BASE  | MiniMax API Base URL  | https://api.minimax.io/v1 | Optional for MiniMax  |
+| MINIMAX_MODEL     | MiniMax Model Name    | MiniMax-M2.7              | Required for MiniMax  |
 
 ### Embedding Configuration
 
