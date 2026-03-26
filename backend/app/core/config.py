@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     DEEPSEEK_API_BASE: str = "https://api.deepseek.com/v1"  # 默认 API 地址
     DEEPSEEK_MODEL: str = "deepseek-chat"  # 默认模型名称
 
+    # MiniMax settings
+    MINIMAX_API_KEY: str = os.getenv("MINIMAX_API_KEY", "")
+    MINIMAX_API_BASE: str = os.getenv("MINIMAX_API_BASE", "https://api.minimax.io/v1")
+    MINIMAX_MODEL: str = os.getenv("MINIMAX_MODEL", "MiniMax-M2.7")
+
     # Ollama settings
     OLLAMA_API_BASE: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "deepseek-r1:7b"
