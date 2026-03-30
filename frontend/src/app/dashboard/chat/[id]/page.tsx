@@ -3,17 +3,30 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "ai/react";
-import { Send, User, Bot } from "lucide-react";
+import { Send, User, ThumbsDown, ThumbsUp } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Answer } from "@/components/chat/answer";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Message {
   id: string;
   role: "assistant" | "user" | "system" | "data";
   content: string;
   citations?: Citation[];
+  feedbackType?: "up" | "down" | null;
+  feedbackNote?: string | null;
+  correctedAnswer?: string | null;
+  feedbackQuery?: string | null;
 }
 
 interface ChatMessage {
@@ -21,6 +34,10 @@ interface ChatMessage {
   content: string;
   role: "assistant" | "user";
   created_at: string;
+  feedback_type?: "up" | "down" | null;
+  feedback_note?: string | null;
+  corrected_answer?: string | null;
+  feedback_query?: string | null;
 }
 
 interface Chat {
@@ -39,6 +56,10 @@ interface Citation {
 declare module "ai/react" {
   interface Message {
     citations?: Citation[];
+    feedbackType?: "up" | "down" | null;
+    feedbackNote?: string | null;
+    correctedAnswer?: string | null;
+    feedbackQuery?: string | null;
   }
 }
 
@@ -47,6 +68,12 @@ export default function ChatPage({ params }: { params: { id: string } }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [selectedFeedbackMessage, setSelectedFeedbackMessage] =
+    useState<Message | null>(null);
+  const [feedbackDescription, setFeedbackDescription] = useState("");
+  const [correctedAnswer, setCorrectedAnswer] = useState("");
+  const prevLoadingRef = useRef(false);
 
   const {
     messages,
@@ -89,6 +116,10 @@ export default function ChatPage({ params }: { params: { id: string } }) {
             id: msg.id.toString(),
             role: msg.role,
             content: msg.content,
+            feedbackType: msg.feedback_type ?? null,
+            feedbackNote: msg.feedback_note ?? null,
+            correctedAnswer: msg.corrected_answer ?? null,
+            feedbackQuery: msg.feedback_query ?? null,
           };
 
         try {
@@ -124,6 +155,10 @@ export default function ChatPage({ params }: { params: { id: string } }) {
             role: msg.role,
             content: responseText || "",
             citations,
+            feedbackType: msg.feedback_type ?? null,
+            feedbackNote: msg.feedback_note ?? null,
+            correctedAnswer: msg.corrected_answer ?? null,
+            feedbackQuery: msg.feedback_query ?? null,
           };
         } catch (e) {
           console.error("Failed to process message:", e);
@@ -131,6 +166,10 @@ export default function ChatPage({ params }: { params: { id: string } }) {
             id: msg.id.toString(),
             role: msg.role,
             content: msg.content,
+            feedbackType: msg.feedback_type ?? null,
+            feedbackNote: msg.feedback_note ?? null,
+            correctedAnswer: msg.corrected_answer ?? null,
+            feedbackQuery: msg.feedback_query ?? null,
           };
         }
       });
@@ -241,6 +280,114 @@ export default function ChatPage({ params }: { params: { id: string } }) {
     });
   }, [messages]);
 
+  useEffect(() => {
+    if (!prevLoadingRef.current && isLoading) {
+      prevLoadingRef.current = true;
+      return;
+    }
+    if (prevLoadingRef.current && !isLoading) {
+      prevLoadingRef.current = false;
+      fetchChat();
+    }
+  }, [isLoading]);
+
+  const getPreviousUserQuestion = (messageId: string): string => {
+    const messageIndex = processedMessages.findIndex((msg) => msg.id === messageId);
+    if (messageIndex <= 0) {
+      return "";
+    }
+
+    for (let i = messageIndex - 1; i >= 0; i -= 1) {
+      if (processedMessages[i].role === "user") {
+        return processedMessages[i].content;
+      }
+    }
+
+    return "";
+  };
+
+  const canSubmitFeedback = (message: Message): boolean => !Number.isNaN(Number(message.id));
+
+  const handleThumbsUp = async (message: Message) => {
+    if (!canSubmitFeedback(message)) {
+      toast({
+        title: "Please wait",
+        description: "Feedback will be available after message is saved.",
+      });
+      return;
+    }
+
+    const userQuery = getPreviousUserQuestion(message.id);
+    try {
+      await api.post(`/api/chat/${params.id}/messages/${message.id}/feedback`, {
+        feedback_type: "up",
+        user_query: userQuery,
+        assistant_response: message.content,
+      });
+      toast({
+        title: "Thanks for the feedback",
+        description: "This answer will be preferred for the same question.",
+      });
+      fetchChat();
+    } catch (error) {
+      toast({
+        title: "Feedback failed",
+        description:
+          error instanceof ApiError ? error.message : "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openThumbsDownDialog = (message: Message) => {
+    if (!canSubmitFeedback(message)) {
+      toast({
+        title: "Please wait",
+        description: "Feedback will be available after message is saved.",
+      });
+      return;
+    }
+    setSelectedFeedbackMessage(message);
+    setFeedbackDescription(message.feedbackNote || "");
+    setCorrectedAnswer(message.correctedAnswer || "");
+    setFeedbackDialogOpen(true);
+  };
+
+  const submitThumbsDown = async () => {
+    if (!selectedFeedbackMessage) {
+      return;
+    }
+    const userQuery = getPreviousUserQuestion(selectedFeedbackMessage.id);
+    try {
+      await api.post(
+        `/api/chat/${params.id}/messages/${selectedFeedbackMessage.id}/feedback`,
+        {
+          feedback_type: "down",
+          user_query: userQuery,
+          assistant_response: selectedFeedbackMessage.content,
+          corrected_answer: correctedAnswer,
+          feedback_note: feedbackDescription,
+        }
+      );
+      setFeedbackDialogOpen(false);
+      setSelectedFeedbackMessage(null);
+      setFeedbackDescription("");
+      setCorrectedAnswer("");
+      toast({
+        title: "Feedback saved",
+        description: "Your correction will be preferred for this question next time.",
+      });
+      fetchChat();
+    } catch (error) {
+      toast({
+        title: "Feedback failed",
+        description:
+          error instanceof ApiError ? error.message : "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="flex flex-col h-[calc(100vh-5rem)] relative">
@@ -264,6 +411,29 @@ export default function ChatPage({ params }: { params: { id: string } }) {
                     markdown={message.content}
                     citations={message.citations}
                   />
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={message.feedbackType === "up" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleThumbsUp(message)}
+                    >
+                      <ThumbsUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={message.feedbackType === "down" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => openThumbsDownDialog(message)}
+                    >
+                      <ThumbsDown className="h-4 w-4" />
+                    </Button>
+                    {message.feedbackType && (
+                      <span className="text-xs text-muted-foreground">
+                        Feedback saved ({message.feedbackType === "up" ? "helpful" : "needs correction"})
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -314,6 +484,50 @@ export default function ChatPage({ params }: { params: { id: string } }) {
           </button>
         </form>
       </div>
+      <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Improve this answer</DialogTitle>
+            <DialogDescription>
+              Share the correct answer or a description. This will be used first for the same question next time.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Correct answer</label>
+              <textarea
+                value={correctedAnswer}
+                onChange={(e) => setCorrectedAnswer(e.target.value)}
+                rows={4}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="Enter the corrected answer"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <textarea
+                value={feedbackDescription}
+                onChange={(e) => setFeedbackDescription(e.target.value)}
+                rows={3}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="Describe what was wrong (optional if answer provided)"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setFeedbackDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={submitThumbsDown}
+              disabled={!correctedAnswer.trim() && !feedbackDescription.trim()}
+            >
+              Save feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

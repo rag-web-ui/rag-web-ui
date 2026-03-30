@@ -10,8 +10,9 @@ from app.schemas.chat import (
     ChatCreate,
     ChatResponse,
     ChatUpdate,
+    MessageFeedbackRequest,
     MessageCreate,
-    MessageResponse
+    MessageResponse,
 )
 from app.core.security import get_current_user
 from app.services.chat_service import generate_response
@@ -120,7 +121,8 @@ async def create_message(
             messages=messages,
             knowledge_base_ids=knowledge_base_ids,
             chat_id=chat_id,
-            db=db
+            db=db,
+            user_id=current_user.id,
         ):
             yield chunk
 
@@ -151,5 +153,60 @@ def delete_chat(
         raise HTTPException(status_code=404, detail="Chat not found")
     
     db.delete(chat)
+    db.commit()
+    return {"status": "success"}
+
+
+@router.post("/{chat_id}/messages/{message_id}/feedback")
+def message_feedback(
+    *,
+    db: Session = Depends(get_db),
+    chat_id: int,
+    message_id: int,
+    feedback: MessageFeedbackRequest,
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    chat = (
+        db.query(Chat)
+        .filter(Chat.id == chat_id, Chat.user_id == current_user.id)
+        .first()
+    )
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    message = (
+        db.query(Message)
+        .filter(
+            Message.id == message_id,
+            Message.chat_id == chat_id,
+            Message.role == "assistant",
+        )
+        .first()
+    )
+    if not message:
+        raise HTTPException(status_code=404, detail="Assistant message not found")
+
+    feedback_type = feedback.feedback_type.strip().lower()
+    if feedback_type not in {"up", "down"}:
+        raise HTTPException(status_code=400, detail="feedback_type must be 'up' or 'down'")
+
+    resolved_answer = None
+    if feedback_type == "up":
+        resolved_answer = feedback.assistant_response.strip()
+    else:
+        resolved_answer = (feedback.corrected_answer or "").strip() or (
+            feedback.feedback_note or ""
+        ).strip()
+        if not resolved_answer:
+            raise HTTPException(
+                status_code=400,
+                detail="Please provide corrected_answer or feedback_note for thumbs down",
+            )
+
+    message.feedback_type = feedback_type
+    message.feedback_note = (feedback.feedback_note or "").strip() or None
+    message.corrected_answer = resolved_answer
+    message.feedback_query = feedback.user_query.strip()
+
     db.commit()
     return {"status": "success"}

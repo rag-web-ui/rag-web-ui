@@ -1,14 +1,16 @@
 import json
 import base64
-from typing import List, AsyncGenerator
+import re
+from typing import List, AsyncGenerator, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from langchain_openai import ChatOpenAI
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 from app.core.config import settings
-from app.models.chat import Message
+from app.models.chat import Message, Chat, chat_knowledge_bases
 from app.models.knowledge import KnowledgeBase, Document
 from langchain.globals import set_verbose, set_debug
 from app.services.vector_store import VectorStoreFactory
@@ -18,12 +20,60 @@ from app.services.llm.llm_factory import LLMFactory
 set_verbose(True)
 set_debug(True)
 
+
+def _normalize_text(value: str) -> str:
+    return re.sub(r"\s+", " ", value or "").strip().lower()
+
+
+def _extract_assistant_text(content: str) -> str:
+    if not content:
+        return ""
+    if "__LLM_RESPONSE__" in content:
+        return content.split("__LLM_RESPONSE__", 1)[1].strip()
+    return content.strip()
+
+
+def _get_feedback_answer(
+    db: Session, query: str, knowledge_base_ids: List[int], user_id: int
+) -> Optional[str]:
+    normalized_query = _normalize_text(query)
+    if not normalized_query:
+        return None
+
+    candidates = (
+        db.query(Message)
+        .join(Chat, Message.chat_id == Chat.id)
+        .join(chat_knowledge_bases, chat_knowledge_bases.c.chat_id == Chat.id)
+        .filter(
+            Chat.user_id == user_id,
+            Message.role == "assistant",
+            Message.feedback_type.in_(["up", "down"]),
+            chat_knowledge_bases.c.knowledge_base_id.in_(knowledge_base_ids),
+        )
+        .order_by(desc(Message.updated_at))
+        .all()
+    )
+
+    for candidate in candidates:
+        if _normalize_text(candidate.feedback_query or "") != normalized_query:
+            continue
+
+        preferred_answer = (
+            (candidate.corrected_answer or "").strip()
+            or _extract_assistant_text(candidate.content)
+        )
+        if preferred_answer:
+            return preferred_answer
+
+    return None
+
 async def generate_response(
     query: str,
     messages: dict,
     knowledge_base_ids: List[int],
     chat_id: int,
-    db: Session
+    db: Session,
+    user_id: int,
 ) -> AsyncGenerator[str, None]:
     try:
         # Create user message
@@ -43,6 +93,23 @@ async def generate_response(
         )
         db.add(bot_message)
         db.commit()
+
+        preferred_answer = _get_feedback_answer(
+            db=db,
+            query=query,
+            knowledge_base_ids=knowledge_base_ids,
+            user_id=user_id,
+        )
+        if preferred_answer:
+            escaped_answer = preferred_answer.replace('"', '\\"').replace("\n", "\\n")
+            yield f'0:"{escaped_answer}"\n'
+            yield (
+                'd:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}'
+                "\n"
+            )
+            bot_message.content = preferred_answer
+            db.commit()
+            return
         
         # Get knowledge bases and their documents
         knowledge_bases = (

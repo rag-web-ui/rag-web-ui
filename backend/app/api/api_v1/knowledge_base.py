@@ -48,6 +48,7 @@ from app.core.minio import get_minio_client
 from minio.error import MinioException
 from app.services.vector_store import VectorStoreFactory
 from app.services.embedding.embedding_factory import EmbeddingsFactory
+from app.models.chat import Chat, chat_knowledge_bases
 
 router = APIRouter()
 
@@ -180,6 +181,21 @@ async def delete_knowledge_base(
     try:
         # Get all document file paths before deletion
         document_paths = [doc.file_path for doc in kb.documents]
+
+        # Delete chat history related to this knowledge base.
+        related_chats = (
+            db.query(Chat)
+            .join(chat_knowledge_bases, chat_knowledge_bases.c.chat_id == Chat.id)
+            .filter(
+                chat_knowledge_bases.c.knowledge_base_id == kb_id,
+                Chat.user_id == current_user.id,
+            )
+            .all()
+        )
+        for chat in related_chats:
+            db.delete(chat)
+        if related_chats:
+            db.flush()
 
         # Initialize services
         minio_client = get_minio_client()
