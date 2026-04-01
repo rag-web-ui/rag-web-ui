@@ -15,18 +15,29 @@ export default function Home() {
             Powerful. Intuitive. Revolutionary.
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mt-12">
-            <Link
-              href="/register"
-              className="px-8 py-4 bg-blue-600 text-white rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-700 w-full sm:w-auto"
-            >
-              Get Started
-            </Link>
-            <Link
-              href="/login"
-              className="px-8 py-4 bg-gray-200 text-gray-800 rounded-full text-lg font-medium transition-all duration-300 hover:bg-gray-300 w-full sm:w-auto"
-            >
-              Sign In
-            </Link>
+            {process.env.NEXT_PUBLIC_AUTH_ENABLED === "true" ? (
+              <>
+                <Link
+                  href="/register"
+                  className="px-8 py-4 bg-blue-600 text-white rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-700 w-full sm:w-auto"
+                >
+                  Get Started
+                </Link>
+                <Link
+                  href="/login"
+                  className="px-8 py-4 bg-gray-200 text-gray-800 rounded-full text-lg font-medium transition-all duration-300 hover:bg-gray-300 w-full sm:w-auto"
+                >
+                  Sign In
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/dashboard/knowledge"
+                className="px-8 py-4 bg-blue-600 text-white rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-700 w-full sm:w-auto"
+              >
+                Enter Dashboard
+              </Link>
+            )}
             <a
               href="https://github.com/JohannLai/rag-web-ui"
               target="_blank"
@@ -155,10 +166,16 @@ export default function Home() {
             Join thousands of developers who are already building the future with RAG Web UI.
           </p>
           <Link
-            href="/register"
+            href={
+              process.env.NEXT_PUBLIC_AUTH_ENABLED === "true"
+                ? "/register"
+                : "/dashboard/knowledge"
+            }
             className="px-8 py-4 bg-blue-600 text-white rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-700"
           >
-            Try it for free
+            {process.env.NEXT_PUBLIC_AUTH_ENABLED === "true"
+              ? "Try it for free"
+              : "Enter Dashboard"}
           </Link>
         </div>
       </div>

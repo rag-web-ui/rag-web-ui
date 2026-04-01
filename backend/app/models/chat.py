@@ -34,6 +34,10 @@ class Message(Base, TimestampMixin):
     content = Column(LONGTEXT, nullable=False)
     role = Column(String(50), nullable=False)
     chat_id = Column(Integer, ForeignKey("chats.id"), nullable=False)
+    feedback_type = Column(String(10), nullable=True)
+    feedback_note = Column(LONGTEXT, nullable=True)
+    corrected_answer = Column(LONGTEXT, nullable=True)
+    feedback_query = Column(LONGTEXT, nullable=True)
 
     # Relationships
     chat = relationship("Chat", back_populates="messages") 

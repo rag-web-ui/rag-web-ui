@@ -26,6 +26,8 @@ services:
 
   frontend:
     build: ./frontend
+    env_file:
+      - .env
     volumes:
       - ./frontend:/app
       - /app/node_modules

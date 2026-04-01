@@ -25,3 +25,6 @@ dashscope>=1.13.6
 langchain-deepseek==0.1.1
 langchain-ollama==0.2.3
 docx2txt==0.8
+pandas>=2.0.0
+openpyxl>=3.1.0
+python-pptx>=0.6.22

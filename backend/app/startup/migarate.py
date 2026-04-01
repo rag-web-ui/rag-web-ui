@@ -1,4 +1,5 @@
 import logging
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Tuple
@@ -20,6 +21,8 @@ class DatabaseMigrator:
     def __init__(self, db_url: str):
         self.db_url = db_url
         self.alembic_cfg = self._get_alembic_config()
+        self.max_retries = 30
+        self.retry_delay_seconds = 2
 
     @contextmanager
     def database_connection(self) -> Generator[Connection, None, None]:
@@ -80,21 +83,39 @@ class DatabaseMigrator:
         Raises:
             Exception: If migration fails
         """
-        try:
-            # Check if migration is needed
-            needs_migration, current_rev, head_rev = self.check_migration_needed()
+        last_error: Exception | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                # Check if migration is needed
+                needs_migration, current_rev, head_rev = self.check_migration_needed()
 
-            if needs_migration:
-                logger.info(f"Current revision: {current_rev}, upgrading to: {head_rev}")
-                self.alembic_cfg.set_main_option("sqlalchemy.url", self.db_url)
+                if needs_migration:
+                    logger.info(
+                        f"Current revision: {current_rev}, upgrading to: {head_rev}"
+                    )
+                    self.alembic_cfg.set_main_option("sqlalchemy.url", self.db_url)
 
-                # 执行 alembic 升级
-                alembic_main(argv=["--raiseerr", "upgrade", "head"], config=self.alembic_cfg)
+                    # 执行 alembic 升级
+                    alembic_main(
+                        argv=["--raiseerr", "upgrade", "head"], config=self.alembic_cfg
+                    )
 
-                logger.info("Database migrations completed successfully")
-            else:
-                logger.info(f"Database is already at the latest version: {current_rev}")
+                    logger.info("Database migrations completed successfully")
+                else:
+                    logger.info(
+                        f"Database is already at the latest version: {current_rev}"
+                    )
+                return
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    "Database is not ready yet (attempt %s/%s): %s",
+                    attempt,
+                    self.max_retries,
+                    e,
+                )
+                if attempt < self.max_retries:
+                    time.sleep(self.retry_delay_seconds)
 
-        except Exception as e:
-            logger.error(f"Error during database migration: {e}")
-            raise
+        logger.error("Error during database migration after retries: %s", last_error)
+        raise RuntimeError("Database migration failed after retries") from last_error
