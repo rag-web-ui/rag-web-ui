@@ -35,12 +35,12 @@ interface DocumentUploadStepsProps {
 interface FileStatus {
   file: File;
   status:
-    | "pending"
-    | "uploading"
-    | "uploaded"
-    | "processing"
-    | "completed"
-    | "error";
+  | "pending"
+  | "uploading"
+  | "uploaded"
+  | "processing"
+  | "completed"
+  | "error";
   uploadId?: number;
   documentId?: number;
   tempPath?: string;
@@ -104,8 +104,8 @@ export function DocumentUploadSteps({
     [key: number]: TaskStatus;
   }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [chunkSize, setChunkSize] = useState(1000);
-  const [chunkOverlap, setChunkOverlap] = useState(200);
+  const [chunkSize, setChunkSize] = useState(process.env.NEXT_PUBLIC_CHUNK_SIZE ? Number(process.env.NEXT_PUBLIC_CHUNK_SIZE) : 1000);
+  const [chunkOverlap, setChunkOverlap] = useState(process.env.NEXT_PUBLIC_CHUNK_OVERLAP ? Number(process.env.NEXT_PUBLIC_CHUNK_OVERLAP) : 200);
   const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -122,10 +122,13 @@ export function DocumentUploadSteps({
     onDrop,
     accept: {
       "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        [".docx"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
       "text/plain": [".txt"],
       "text/markdown": [".md"],
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+      "application/vnd.ms-powerpoint": [".ppt"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.ms-excel": [".xls"]
     },
   });
 
@@ -368,8 +371,8 @@ export function DocumentUploadSteps({
                   currentStep === step
                     ? "bg-primary text-primary-foreground border-primary"
                     : currentStep > step
-                    ? "bg-primary/20 border-primary/20"
-                    : "bg-background border-input"
+                      ? "bg-primary/20 border-primary/20"
+                      : "bg-background border-input"
                 )}
               >
                 <Icon className="w-6 h-6" />
@@ -409,7 +412,7 @@ export function DocumentUploadSteps({
                   Drop your files here or click to browse
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Supports PDF, DOCX, TXT, and MD files
+                  Supports PDF, DOCX, TXT, MD, PPTX, and XLSX files
                 </p>
               </div>
               {files.length > 0 && (
@@ -424,9 +427,9 @@ export function DocumentUploadSteps({
                           <FileIcon
                             extension={fileStatus.file.name.split(".").pop()}
                             {...defaultStyles[
-                              fileStatus.file.name
-                                .split(".")
-                                .pop() as keyof typeof defaultStyles
+                            fileStatus.file.name
+                              .split(".")
+                              .pop() as keyof typeof defaultStyles
                             ]}
                           />
                         </div>
@@ -620,9 +623,9 @@ export function DocumentUploadSteps({
                               <FileIcon
                                 extension={file.file.name.split(".").pop()}
                                 {...defaultStyles[
-                                  file.file.name
-                                    .split(".")
-                                    .pop() as keyof typeof defaultStyles
+                                file.file.name
+                                  .split(".")
+                                  .pop() as keyof typeof defaultStyles
                                 ]}
                               />
                             </div>
