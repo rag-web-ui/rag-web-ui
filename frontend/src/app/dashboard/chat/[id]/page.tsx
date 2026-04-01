@@ -280,6 +280,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
     });
   }, [messages]);
 
+<<<<<<< HEAD
   // Step 1: Check if feedback is required
   const lastAssistantMessage = processedMessages
     .slice()
@@ -290,6 +291,8 @@ export default function ChatPage({ params }: { params: { id: string } }) {
     ? !lastAssistantMessage.feedbackType
     : false;
 
+=======
+>>>>>>> 8eaa05b658a11ae9d3ee64e5674c2829eb1084c2
   useEffect(() => {
     if (!prevLoadingRef.current && isLoading) {
       prevLoadingRef.current = true;
