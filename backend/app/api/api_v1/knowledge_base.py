@@ -367,8 +367,13 @@ async def process_kb_documents(
     if not upload_ids:
         return {"tasks": []}
     
-    uploads = db.query(DocumentUpload).filter(DocumentUpload.id.in_(upload_ids)).all()
+    uploads = db.query(DocumentUpload).filter(
+        DocumentUpload.id.in_(upload_ids),
+        DocumentUpload.knowledge_base_id == kb_id
+    ).all()
     uploads_dict = {upload.id: upload for upload in uploads}
+    if len(uploads_dict) != len(upload_ids):
+        raise HTTPException(status_code=403, detail="One or more upload IDs do not belong to this knowledge base")
     
     all_tasks = []
     for upload_id in upload_ids:
