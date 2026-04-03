@@ -372,8 +372,8 @@ async def process_kb_documents(
         DocumentUpload.knowledge_base_id == kb_id
     ).all()
     uploads_dict = {upload.id: upload for upload in uploads}
-    if len(uploads_dict) != len(upload_ids):
-        raise HTTPException(status_code=403, detail="One or more upload IDs do not belong to this knowledge base")
+    if len(uploads_dict) != len(set(upload_ids)):
+        raise HTTPException(status_code=400, detail="One or more upload IDs are invalid")
     
     all_tasks = []
     for upload_id in upload_ids:
