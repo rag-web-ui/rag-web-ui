@@ -10,14 +10,11 @@ class TestMiniMaxConfig:
 
     def test_minimax_settings_defaults(self):
         """Verify default values for MiniMax settings."""
-        env_copy = os.environ.copy()
-        for key in ("MINIMAX_API_KEY", "MINIMAX_API_BASE", "MINIMAX_MODEL"):
-            env_copy.pop(key, None)
-        with patch.dict(os.environ, env_copy, clear=True):
-            from importlib import reload
-            from app.core import config as config_module
-            reload(config_module)
-            s = config_module.Settings()
+        env_clean = {k: v for k, v in os.environ.items()
+                     if k not in ("MINIMAX_API_KEY", "MINIMAX_API_BASE", "MINIMAX_MODEL")}
+        with patch.dict(os.environ, env_clean, clear=True):
+            from app.core.config import Settings
+            s = Settings()
             assert s.MINIMAX_API_BASE == "https://api.minimax.io/v1"
             assert s.MINIMAX_MODEL == "MiniMax-M2.7"
             assert s.MINIMAX_API_KEY == ""
@@ -30,10 +27,8 @@ class TestMiniMaxConfig:
             "MINIMAX_MODEL": "MiniMax-M2.7-highspeed",
         }
         with patch.dict(os.environ, env, clear=False):
-            from importlib import reload
-            from app.core import config as config_module
-            reload(config_module)
-            s = config_module.Settings()
+            from app.core.config import Settings
+            s = Settings()
             assert s.MINIMAX_API_KEY == "test-key-123"
             assert s.MINIMAX_API_BASE == "https://custom.minimax.io/v1"
             assert s.MINIMAX_MODEL == "MiniMax-M2.7-highspeed"
@@ -41,10 +36,8 @@ class TestMiniMaxConfig:
     def test_chat_provider_minimax(self):
         """Verify CHAT_PROVIDER can be set to minimax."""
         with patch.dict(os.environ, {"CHAT_PROVIDER": "minimax"}, clear=False):
-            from importlib import reload
-            from app.core import config as config_module
-            reload(config_module)
-            s = config_module.Settings()
+            from app.core.config import Settings
+            s = Settings()
             assert s.CHAT_PROVIDER == "minimax"
 
 
