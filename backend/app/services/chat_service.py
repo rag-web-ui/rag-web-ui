@@ -124,11 +124,15 @@ async def generate_response(
             ("human", "{input}")
         ])
 
-        # Create QA chain without custom document_prompt to avoid KeyError
-        # The default behavior will use 'context' as the variable name
+        # 修改 create_stuff_documents_chain 来自定义 context 格式
+        document_prompt = PromptTemplate.from_template("\n\n- {page_content}\n\n")
+
+        # Create QA chain
         question_answer_chain = create_stuff_documents_chain(
             llm,
-            qa_prompt
+            qa_prompt,
+            document_variable_name="context",
+            document_prompt=document_prompt
         )
 
         # Create retrieval chain
