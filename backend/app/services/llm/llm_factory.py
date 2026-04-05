@@ -43,7 +43,7 @@ class LLMFactory:
                 streaming=streaming
             )
         elif provider.lower() == "minimax":
-            # MiniMax API requires temperature in (0.0, 1.0]
+            # MiniMax API requires temperature in (0.0, 1.0]; clamp to [0.01, 1.0]
             clamped_temperature = max(0.01, min(temperature, 1.0))
             return ChatOpenAI(
                 temperature=clamped_temperature,
