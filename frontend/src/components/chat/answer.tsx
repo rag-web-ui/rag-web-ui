@@ -19,6 +19,23 @@ import rehypeHighlight from "rehype-highlight";
 import { api } from "@/lib/api";
 import { FileIcon } from "react-file-icon";
 
+// Debounce hook to prevent rapid state updates during streaming
+const useDebouncedValue = <T,>(value: T, delay: number): T => {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 interface Citation {
   id: number;
   text: string;
@@ -47,6 +64,9 @@ export const Answer: FC<{
     Record<string, CitationInfo>
   >({});
 
+  // Debounce citations to prevent rapid API calls during streaming
+  const debouncedCitations = useDebouncedValue(citations, 300);
+
   const processedMarkdown = useMemo(() => {
     return markdown
       .replace(/<think>/g, "## 💭 深度思考\n```think")
@@ -57,7 +77,7 @@ export const Answer: FC<{
     const fetchCitationInfo = async () => {
       const infoMap: Record<string, CitationInfo> = {};
 
-      for (const citation of citations) {
+      for (const citation of debouncedCitations) {
         const { kb_id, document_id } = citation.metadata;
         if (!kb_id || !document_id) continue;
 
@@ -89,10 +109,10 @@ export const Answer: FC<{
       setCitationInfoMap(infoMap);
     };
 
-    if (citations.length > 0) {
+    if (debouncedCitations.length > 0) {
       fetchCitationInfo();
     }
-  }, [citations]);
+  }, [debouncedCitations]);
 
   const CitationLink = useMemo(
     () =>
@@ -102,7 +122,7 @@ export const Answer: FC<{
       ) => {
         const citationId = props.href?.match(/^(\d+)$/)?.[1];
         const citation = citationId
-          ? citations[parseInt(citationId) - 1]
+          ? debouncedCitations[parseInt(citationId) - 1]
           : null;
 
         if (!citation) {
@@ -172,7 +192,7 @@ export const Answer: FC<{
           </Popover>
         );
       },
-    [citations, citationInfoMap]
+    [debouncedCitations, citationInfoMap]
   );
 
   if (!markdown) {
