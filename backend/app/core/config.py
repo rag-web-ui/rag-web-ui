@@ -81,6 +81,12 @@ class Settings(BaseSettings):
         "OLLAMA_EMBEDDINGS_MODEL", "nomic-embed-text"
     )  # Added this line
 
+    # HuggingFace settings
+    HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")
+    HUGGINGFACE_EMBEDDINGS_MODEL: str = os.getenv(
+        "HUGGINGFACE_EMBEDDINGS_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
+    )
+
     class Config:
         env_file = ".env"
 

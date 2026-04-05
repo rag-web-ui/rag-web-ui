@@ -2,8 +2,7 @@ from app.core.config import settings
 from langchain_openai import OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.embeddings import DashScopeEmbeddings
-# If you plan on adding other embeddings, import them here
-# from some_other_module import AnotherEmbeddingClass
+from langchain_huggingface import HuggingFaceEmbeddings
 
 
 class EmbeddingsFactory:
@@ -12,7 +11,6 @@ class EmbeddingsFactory:
         """
         Factory method to create an embeddings instance based on .env config.
         """
-        # Suppose your .env has a value like EMBEDDINGS_PROVIDER=openai
         embeddings_provider = settings.EMBEDDINGS_PROVIDER.lower()
 
         if embeddings_provider == "openai":
@@ -31,9 +29,13 @@ class EmbeddingsFactory:
                 model=settings.OLLAMA_EMBEDDINGS_MODEL,
                 base_url=settings.OLLAMA_API_BASE
             )
-
-        # Extend with other providers:
-        # elif embeddings_provider == "another_provider":
-        #     return AnotherEmbeddingClass(...)
+        elif embeddings_provider == "huggingface":
+            model_kwargs = {}
+            if settings.HUGGINGFACE_API_KEY:
+                model_kwargs["token"] = settings.HUGGINGFACE_API_KEY
+            return HuggingFaceEmbeddings(
+                model_name=settings.HUGGINGFACE_EMBEDDINGS_MODEL,
+                model_kwargs=model_kwargs
+            )
         else:
             raise ValueError(f"Unsupported embeddings provider: {embeddings_provider}")
