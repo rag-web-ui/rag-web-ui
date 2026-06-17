@@ -185,16 +185,19 @@ export default function APIKeysPage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto py-10">
+      <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">API Keys</h1>
-          <div className="flex gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-slate-900">API Configuration</h1>
+            <p className="text-slate-600 mt-2">Manage your API keys and configure LLM settings</p>
+          </div>
+          <div className="flex gap-3">
             <Dialog
               open={isAPIListDialogOpen}
               onOpenChange={setIsAPIListDialogOpen}
             >
               <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button className="bg-slate-200 text-slate-900 hover:bg-slate-300 rounded-lg">
                   <List className="mr-2 h-4 w-4" />
                   API List
                 </Button>
@@ -207,8 +210,8 @@ export default function APIKeysPage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="mt-4 space-y-6">
-                  <div className="border rounded-lg p-6 bg-slate-50">
-                    <h3 className="text-lg font-semibold mb-4">
+                  <div className="border border-slate-200 rounded-xl p-6 bg-gradient-to-br from-slate-50 to-white">
+                    <h3 className="text-lg font-bold text-slate-900 mb-4">
                       Knowledge Base Query
                     </h3>
                     <div className="space-y-4">
@@ -269,7 +272,7 @@ export default function APIKeysPage() {
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shadow-md">
                   <Plus className="mr-2 h-4 w-4" />
                   Create API Key
                 </Button>
@@ -305,7 +308,7 @@ export default function APIKeysPage() {
           </div>
         </div>
 
-        <div className="rounded-md border">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

@@ -81,16 +81,16 @@ export default function KnowledgeBasePage() {
       <div className="space-y-8">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">
+            <h2 className="text-4xl font-bold tracking-tight text-slate-900">
               Knowledge Bases
             </h2>
-            <p className="text-muted-foreground">
-              Manage your knowledge bases and documents
+            <p className="text-slate-600 mt-2">
+              Manage your knowledge bases and documents for intelligent retrieval and analysis
             </p>
           </div>
           <Link
             href="/dashboard/knowledge/new"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg transition-all duration-200"
           >
             <Plus className="mr-2 h-4 w-4" />
             New Knowledge Base
@@ -101,46 +101,45 @@ export default function KnowledgeBasePage() {
           {knowledgeBases.map((kb) => (
             <div
               key={kb.id}
-              className="rounded-lg border bg-card p-6 space-y-4"
+              className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm hover:shadow-md transition-all duration-200"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-semibold">{kb.name}</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <h3 className="text-xl font-bold text-slate-900">{kb.name}</h3>
+                  <p className="text-sm text-slate-600 mt-1">
                     {kb.description || "No description"}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {kb.documents.length} documents •{" "}
-                    {new Date(kb.created_at).toLocaleDateString()}
+                  <p className="text-xs text-slate-500 mt-2">
+                    {kb.documents.length} documents • Added {new Date(kb.created_at).toLocaleDateString()}
                   </p>
                 </div>
 
                 <div className="flex space-x-2">
                   <Link
                     href={`/dashboard/knowledge/${kb.id}`}
-                    className="inline-flex items-center justify-center rounded-md bg-secondary w-8 h-8"
+                    className="inline-flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 w-9 h-9 transition-colors text-slate-700 hover:text-slate-900"
                   >
                     <Settings className="h-4 w-4" />
                   </Link>
                   <Link
                     href={`/dashboard/test-retrieval/${kb.id}`}
-                    className="inline-flex items-center justify-center rounded-md bg-secondary w-8 h-8"
+                    className="inline-flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 w-9 h-9 transition-colors text-slate-700 hover:text-slate-900"
                   >
                     <Search className="h-4 w-4" />
                   </Link>
                   <button
                     onClick={() => handleDelete(kb.id)}
-                    className="inline-flex items-center justify-center rounded-md bg-destructive/10 hover:bg-destructive/20 w-8 h-8"
+                    className="inline-flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 w-9 h-9 transition-colors text-red-600 hover:text-red-700"
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
               {kb.documents.length > 0 && (
-                <div className="border-t pt-4">
-                  <h4 className="text-sm font-medium mb-2">Documents</h4>
-                  <div className="flex flex-wrap gap-2 max-h-[400px] overflow-y-auto">
+                <div className="border-t border-slate-200 pt-4">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-3">Documents ({kb.documents.length})</h4>
+                  <div className="flex flex-wrap gap-3 max-h-[400px] overflow-y-auto">
                     {kb.documents.slice(0, 9).map((doc) => (
                       <div
                         key={doc.id}
@@ -196,8 +195,8 @@ export default function KnowledgeBasePage() {
           ))}
 
           {!loading && knowledgeBases.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
+            <div className="text-center py-16 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+              <p className="text-slate-600 text-lg">
                 No knowledge bases found. Create one to get started.
               </p>
             </div>

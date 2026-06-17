@@ -243,76 +243,115 @@ export default function ChatPage({ params }: { params: { id: string } }) {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col h-[calc(100vh-5rem)] relative">
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-[80px]">
-          {processedMessages.map((message) =>
-            message.role === "assistant" ? (
-              <div
-                key={message.id}
-                className="flex justify-start items-start space-x-2"
-              >
-                <div className="w-8 h-8 flex items-center justify-center">
-                  <img
-                    src="/logo.png"
-                    className="h-8 w-8 rounded-full"
-                    alt="logo"
-                  />
-                </div>
-                <div className="max-w-[80%] rounded-lg px-4 py-2 text-accent-foreground">
-                  <Answer
-                    key={message.id}
-                    markdown={message.content}
-                    citations={message.citations}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div
-                key={message.id}
-                className="flex justify-end items-start space-x-2"
-              >
-                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-primary text-primary-foreground">
-                  {message.content}
-                </div>
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary-foreground" />
-                </div>
-              </div>
-            )
-          )}
-          <div className="flex justify-start">
-            {isLoading &&
-              processedMessages[processedMessages.length - 1]?.role !=
-                "assistant" && (
-                <div className="max-w-[80%] rounded-lg px-4 py-2 text-accent-foreground">
-                  <div className="flex items-center space-x-1">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" />
-                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:0.2s]" />
-                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:0.4s]" />
+      <div className="flex gap-4 h-[calc(100vh-8rem)] relative">
+        {/* Left Chat Column - 40% */}
+        <div className="flex flex-col w-full lg:w-[40%] border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-2">
+            {processedMessages.map((message) =>
+              message.role === "assistant" ? (
+                <div
+                  key={message.id}
+                  className="flex justify-start items-start space-x-3 group"
+                >
+                  <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Bot className="h-4 w-4 text-primary" />
+                    </div>
+                  </div>
+                  <div className="max-w-xs rounded-lg px-4 py-3 bg-white border border-slate-200 text-slate-900">
+                    <Answer
+                      key={message.id}
+                      markdown={message.content}
+                      citations={message.citations}
+                    />
                   </div>
                 </div>
-              )}
+              ) : (
+                <div
+                  key={message.id}
+                  className="flex justify-end items-start space-x-3"
+                >
+                  <div className="max-w-xs rounded-lg px-4 py-3 bg-primary text-primary-foreground">
+                    <p className="text-sm leading-relaxed">{message.content}</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 mt-1">
+                    <User className="h-4 w-4 text-primary-foreground" />
+                  </div>
+                </div>
+              )
+            )}
+            <div className="flex justify-start">
+              {isLoading &&
+                processedMessages[processedMessages.length - 1]?.role !=
+                  "assistant" && (
+                  <div className="max-w-xs rounded-lg px-4 py-3 bg-slate-100">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 rounded-full bg-slate-600 animate-bounce" />
+                      <div className="w-2 h-2 rounded-full bg-slate-600 animate-bounce [animation-delay:0.2s]" />
+                      <div className="w-2 h-2 rounded-full bg-slate-600 animate-bounce [animation-delay:0.4s]" />
+                    </div>
+                  </div>
+                )}
+            </div>
+            <div ref={messagesEndRef} />
           </div>
-          <div ref={messagesEndRef} />
-        </div>
-        <form
-          onSubmit={handleSubmit}
-          className="border-t p-4 flex items-center space-x-4 bg-background absolute bottom-0 left-0 right-0"
-        >
-          <input
-            value={input}
-            onChange={handleInputChange}
-            placeholder="Type your message..."
-            className="flex-1 min-w-0 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+
+          {/* Input Area */}
+          <form
+            onSubmit={handleSubmit}
+            className="border-t border-slate-200 p-4 flex items-center gap-3 bg-slate-50"
           >
-            <Send className="h-4 w-4" />
-          </button>
-        </form>
+            <input
+              value={input}
+              onChange={handleInputChange}
+              placeholder="Type your message..."
+              className="flex-1 min-w-0 h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 py-2 transition-all duration-200"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
+
+        {/* Right Visualization Column - 60% (Hidden on mobile/tablet) */}
+        <div className="hidden lg:flex flex-col w-[60%] border border-slate-200 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 overflow-hidden shadow-sm">
+          <div className="flex-1 flex flex-col items-center justify-center p-6">
+            <div className="text-center">
+              <h3 className="text-slate-300 text-lg font-semibold mb-2">Knowledge Graph Visualization</h3>
+              <p className="text-slate-500 text-sm mb-6">Neo4j Knowledge Graph will appear here</p>
+              <div className="w-32 h-32 bg-slate-800/50 rounded-lg border border-slate-700 flex items-center justify-center">
+                <div className="text-slate-600">
+                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Entity Inspector */}
+          <div className="p-4 border-t border-slate-700 bg-slate-900/50 backdrop-blur-sm">
+            <h4 className="text-slate-200 text-sm font-semibold mb-3">Entity Inspector</h4>
+            <div className="space-y-2 text-xs text-slate-400">
+              <div className="flex justify-between py-2 border-b border-slate-700/50">
+                <span>Type:</span>
+                <span className="text-slate-300">—</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-700/50">
+                <span>Relations:</span>
+                <span className="text-slate-300">—</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span>Properties:</span>
+                <span className="text-slate-300">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

@@ -53,22 +53,25 @@ export default function DashboardLayout({
       >
         <div className="flex h-full flex-col">
           {/* Sidebar header */}
-          <div className="flex h-16 items-center border-b pl-8">
+          <div className="flex h-20 items-center border-b pl-4 pr-4 bg-gradient-to-r from-blue-50 to-blue-100">
             <Link
               href="/dashboard"
-              className="flex items-center text-lg font-semibold hover:text-primary transition-colors"
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity w-full"
             >
               <img
-                src="/logo.svg"
-                alt="Logo"
-                className="w-16 h-16 rounded-lg"
+                src="/doctome-logo.png"
+                alt="RADOCT Logo"
+                className="h-12 w-auto"
               />
-              RAG Web UI
+              <div className="flex flex-col leading-none">
+                <span className="text-lg font-bold text-blue-600">RADOCT</span>
+                <span className="text-xs text-blue-500 font-medium">Healthcare Platform</span>
+              </div>
             </Link>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-2 px-4 py-6">
+          <nav className="flex-1 space-y-1 px-3 py-6">
             {navigation.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (
@@ -77,30 +80,27 @@ export default function DashboardLayout({
                   href={item.href}
                   className={`group flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
                     isActive
-                      ? "bg-gradient-to-r from-primary/10 to-primary/5 text-primary shadow-sm"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground hover:shadow-sm"
+                      ? "bg-primary/15 text-primary border-l-4 border-primary font-semibold"
+                      : "text-slate-600 hover:bg-slate-100/50 hover:text-slate-900"
                   }`}
                 >
                   <item.icon
-                    className={`mr-3 h-5 w-5 transition-transform duration-200 ${
+                    className={`mr-3 h-5 w-5 transition-all duration-200 ${
                       isActive
                         ? "text-primary scale-110"
-                        : "group-hover:scale-110"
+                        : "text-slate-500 group-hover:text-slate-700 group-hover:scale-110"
                     }`}
                   />
-                  <span className="font-medium">{item.name}</span>
-                  {isActive && (
-                    <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
-                  )}
+                  <span>{item.name}</span>
                 </Link>
               );
             })}
           </nav>
           {/* User profile and logout */}
-          <div className="border-t p-4 space-y-4">
+          <div className="border-t border-slate-200 p-4 space-y-4">
             <button
               onClick={handleLogout}
-              className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors duration-200"
+              className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
             >
               <LogOut className="mr-3 h-4 w-4" />
               Sign out
