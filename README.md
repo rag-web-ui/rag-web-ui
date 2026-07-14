@@ -29,7 +29,7 @@ RAG Web UI is an intelligent dialogue system based on RAG (Retrieval-Augmented G
 
 The system supports multiple **LLM** deployment options, including cloud services like **OpenAI**, **DeepSeek**, and **[MiniMax](https://www.minimax.io)**, as well as local model deployment through **Ollama**, meeting privacy and cost requirements in different scenarios.
 
-It also provides OpenAPI interfaces for convenient knowledge base access via API calls.
+It also provides OpenAPI interfaces for convenient knowledge base access via API calls. Check
 
 ## ✨ Features
 - 📚 **Intelligent Document Management**
