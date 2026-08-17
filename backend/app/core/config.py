@@ -1,6 +1,7 @@
 import os
-from typing import List, Optional
+from typing import Any, Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -31,11 +32,34 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))
 
+    # Auth bypass: when true, skip login and use the default user
+    BYPASS_AUTH: bool = os.getenv("BYPASS_AUTH", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+        "on",
+    )
+    DEFAULT_USERNAME: str = os.getenv("DEFAULT_USERNAME", "admin")
+    DEFAULT_EMAIL: str = os.getenv("DEFAULT_EMAIL", "admin@example.com")
+    DEFAULT_PASSWORD: str = os.getenv("DEFAULT_PASSWORD", "admin")
+
+    @field_validator("BYPASS_AUTH", mode="before")
+    @classmethod
+    def parse_bypass_auth(cls, value: Any) -> bool:
+        """Accept true/1/yes/on from .env for auth bypass."""
+        if isinstance(value, bool):
+            return value
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return False
+        if isinstance(value, str):
+            return value.strip().lower() in ("true", "1", "yes", "on")
+        return bool(value)
+
     # Chat Provider settings
-    CHAT_PROVIDER: str = os.getenv("CHAT_PROVIDER", "openai")
+    CHAT_PROVIDER: str = os.getenv("CHAT_PROVIDER", "ollama")
 
     # Embeddings settings
-    EMBEDDINGS_PROVIDER: str = os.getenv("EMBEDDINGS_PROVIDER", "openai")
+    EMBEDDINGS_PROVIDER: str = os.getenv("EMBEDDINGS_PROVIDER", "ollama")
 
     # MinIO settings
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "localhost:9000")
@@ -74,12 +98,45 @@ class Settings(BaseSettings):
     MINIMAX_API_BASE: str = "https://api.minimax.io/v1"
     MINIMAX_MODEL: str = "MiniMax-M2.7"
 
-    # Ollama settings
-    OLLAMA_API_BASE: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "deepseek-r1:7b"
+    # Ollama settings (required when CHAT_PROVIDER=ollama or EMBEDDINGS_PROVIDER=ollama)
+    OLLAMA_API_BASE: str = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
     OLLAMA_EMBEDDINGS_MODEL: str = os.getenv(
         "OLLAMA_EMBEDDINGS_MODEL", "nomic-embed-text"
-    )  # Added this line
+    )
+    OLLAMA_TEMPERATURE: Optional[float] = None
+    OLLAMA_NUM_CTX: Optional[int] = None
+    OLLAMA_NUM_PREDICT: Optional[int] = None
+    OLLAMA_KEEP_ALIVE: Optional[str] = None
+    OLLAMA_TOP_K: Optional[int] = None
+    OLLAMA_TOP_P: Optional[float] = None
+    OLLAMA_TIMEOUT: Optional[float] = None
+
+    @field_validator(
+        "OLLAMA_TEMPERATURE",
+        "OLLAMA_NUM_CTX",
+        "OLLAMA_NUM_PREDICT",
+        "OLLAMA_KEEP_ALIVE",
+        "OLLAMA_TOP_K",
+        "OLLAMA_TOP_P",
+        "OLLAMA_TIMEOUT",
+        mode="before",
+    )
+    @classmethod
+    def empty_ollama_value_to_none(cls, value: Any) -> Any:
+        """Treat blank .env values as unset so optional Ollama fields stay optional."""
+        if value is None:
+            return None
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
+
+    @property
+    def ollama_client_kwargs(self) -> dict[str, Any]:
+        """HTTP client options for the Ollama LangChain clients."""
+        if self.OLLAMA_TIMEOUT is None:
+            return {}
+        return {"timeout": self.OLLAMA_TIMEOUT}
 
     # HuggingFace settings
     HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")

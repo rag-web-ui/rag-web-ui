@@ -6,4 +6,7 @@ class Token(BaseModel):
     token_type: str
 
 class TokenPayload(BaseModel):
-    sub: Optional[int] = None 
+    sub: Optional[int] = None
+
+class AuthConfig(BaseModel):
+    bypass_auth: bool 

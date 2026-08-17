@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Book, MessageSquare, LogOut, Menu, User } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
+import { ensureBypassSession, isBypassAuth } from "@/lib/auth";
 
 export default function DashboardLayout({
   children,
@@ -14,16 +15,39 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [bypassAuth, setBypassAuth] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-    }
+    let cancelled = false;
+
+    const prepareAuth = async () => {
+      const bypassed = await ensureBypassSession();
+      if (cancelled) {
+        return;
+      }
+      if (bypassed || isBypassAuth()) {
+        setBypassAuth(true);
+        setAuthReady(true);
+        return;
+      }
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+      setAuthReady(true);
+    };
+
+    void prepareAuth();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    sessionStorage.removeItem("bypass_auth");
     router.push("/login");
   };
 
@@ -32,6 +56,14 @@ export default function DashboardLayout({
     { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
     { name: "API Keys", href: "/dashboard/api-keys", icon: User },
   ];
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,15 +129,17 @@ export default function DashboardLayout({
             })}
           </nav>
           {/* User profile and logout */}
-          <div className="border-t p-4 space-y-4">
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors duration-200"
-            >
-              <LogOut className="mr-3 h-4 w-4" />
-              Sign out
-            </button>
-          </div>
+          {!bypassAuth && (
+            <div className="border-t p-4 space-y-4">
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors duration-200"
+              >
+                <LogOut className="mr-3 h-4 w-4" />
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { BypassGate } from "@/components/auth/bypass-gate";
 
 export default function Home() {
   return (
+    <BypassGate>
     <main className="min-h-screen bg-white text-black">
       <div className="max-w-7xl mx-auto px-4 py-24">
         {/* Hero Section */}
@@ -163,5 +165,6 @@ export default function Home() {
         </div>
       </div>
     </main>
+    </BypassGate>
   );
 }

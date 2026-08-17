@@ -1,11 +1,14 @@
 import logging
 
+from fastapi import FastAPI
+
 from app.api.api_v1.api import api_router
 from app.api.openapi.api import router as openapi_router
 from app.core.config import settings
 from app.core.minio import init_minio
+from app.db.session import SessionLocal
+from app.services.user import get_or_create_default_user
 from app.startup.migarate import DatabaseMigrator
-from fastapi import FastAPI
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,6 +33,15 @@ async def startup_event():
     # Run database migrations
     migrator = DatabaseMigrator(settings.get_database_url)
     migrator.run_migrations()
+    if settings.BYPASS_AUTH:
+        db = SessionLocal()
+        try:
+            user = get_or_create_default_user(db)
+            logging.getLogger(__name__).info(
+                "Auth bypass enabled; default user is ready: %s", user.username
+            )
+        finally:
+            db.close()
 
 
 @app.get("/")

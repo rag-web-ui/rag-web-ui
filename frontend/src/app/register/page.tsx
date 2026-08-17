@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
+import { BypassGate } from "@/components/auth/bypass-gate";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -105,6 +106,7 @@ export default function RegisterPage() {
   };
 
   return (
+    <BypassGate>
     <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-lg shadow-md p-8 space-y-6">
@@ -242,5 +244,6 @@ export default function RegisterPage() {
         </div>
       </div>
     </main>
+    </BypassGate>
   );
 }

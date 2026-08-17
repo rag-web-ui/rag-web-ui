@@ -10,7 +10,11 @@ export class ApiError extends Error {
   }
 }
 
-export async function fetchApi(fullUrl: string, options: FetchOptions = {}) {
+export async function fetchApi(
+  fullUrl: string,
+  options: FetchOptions = {},
+  retryOnBypass = true
+) {
   const { data, headers: customHeaders = {}, ...restOptions } = options;
 
   // Get token from localStorage
@@ -51,7 +55,12 @@ export async function fetchApi(fullUrl: string, options: FetchOptions = {}) {
     const response = await fetch(fullUrl, config);
 
     if (response.status === 401) {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && retryOnBypass) {
+        const { ensureBypassSession } = await import('./auth');
+        const bypassed = await ensureBypassSession();
+        if (bypassed) {
+          return fetchApi(fullUrl, options, false);
+        }
         localStorage.removeItem('token');
         window.location.href = '/login';
       }

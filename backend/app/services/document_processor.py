@@ -55,7 +55,7 @@ async def process_document(file_path: str, file_name: str, kb_id: int, document_
         preview_result = await preview_document(file_path, chunk_size, chunk_overlap)
         
         # Initialize embeddings
-        logger.info("Initializing OpenAI embeddings...")
+        logger.info("Initializing embeddings...")
         embeddings = EmbeddingsFactory.create()
         
         logger.info(f"Initializing vector store with collection: kb_{kb_id}")
