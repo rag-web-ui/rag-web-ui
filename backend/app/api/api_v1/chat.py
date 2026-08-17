@@ -13,8 +13,10 @@ from app.schemas.chat import (
     MessageCreate,
     MessageResponse
 )
+from app.schemas.feedback import MessageFeedbackCreate, MessageFeedbackResponse
 from app.core.security import get_current_user
 from app.services.chat_service import generate_response
+from app.services.feedback import submit_message_feedback
 
 router = APIRouter()
 
@@ -76,6 +78,7 @@ def get_chat(
 ) -> Any:
     chat = (
         db.query(Chat)
+        .options(joinedload(Chat.messages).joinedload(Message.feedback))
         .filter(
             Chat.id == chat_id,
             Chat.user_id == current_user.id
@@ -120,17 +123,64 @@ async def create_message(
             messages=messages,
             knowledge_base_ids=knowledge_base_ids,
             chat_id=chat_id,
+            user_id=current_user.id,
             db=db
         ):
             yield chunk
 
     return StreamingResponse(
         response_stream(),
-        media_type="text/event-stream",
+        media_type="text/plain; charset=utf-8",
         headers={
-            "x-vercel-ai-data-stream": "v1"
+            "x-vercel-ai-data-stream": "v1",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
         }
     )
+
+
+@router.post(
+    "/{chat_id}/messages/{message_id}/feedback",
+    response_model=MessageFeedbackResponse,
+)
+def upsert_message_feedback(
+    *,
+    db: Session = Depends(get_db),
+    chat_id: int,
+    message_id: int,
+    feedback_in: MessageFeedbackCreate,
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Store a good/bad rating for an assistant response."""
+    chat = (
+        db.query(Chat)
+        .filter(Chat.id == chat_id, Chat.user_id == current_user.id)
+        .first()
+    )
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    message = (
+        db.query(Message)
+        .filter(Message.id == message_id, Message.chat_id == chat_id)
+        .first()
+    )
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    try:
+        return submit_message_feedback(
+            db,
+            chat=chat,
+            message=message,
+            user_id=current_user.id,
+            rating=feedback_in.rating,
+            comment=feedback_in.comment,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
 
 @router.delete("/{chat_id}")
 def delete_chat(

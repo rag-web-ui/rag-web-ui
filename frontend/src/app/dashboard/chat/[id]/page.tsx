@@ -8,12 +8,14 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Answer } from "@/components/chat/answer";
+import { MessageFeedbackButtons } from "@/components/chat/message-feedback";
 
 interface Message {
   id: string;
   role: "assistant" | "user" | "system" | "data";
   content: string;
   citations?: Citation[];
+  feedback?: "good" | "bad" | null;
 }
 
 interface ChatMessage {
@@ -21,6 +23,9 @@ interface ChatMessage {
   content: string;
   role: "assistant" | "user";
   created_at: string;
+  feedback?: {
+    rating: "good" | "bad";
+  } | null;
 }
 
 interface Chat {
@@ -39,6 +44,7 @@ interface Citation {
 declare module "ai/react" {
   interface Message {
     citations?: Citation[];
+    feedback?: "good" | "bad" | null;
   }
 }
 
@@ -74,6 +80,14 @@ export default function ChatPage({ params }: { params: { id: string } }) {
     }
   }, [isInitialLoad]);
 
+  const wasLoading = useRef(false);
+  useEffect(() => {
+    if (wasLoading.current && !isLoading) {
+      fetchChat();
+    }
+    wasLoading.current = isLoading;
+  }, [isLoading]);
+
   useEffect(() => {
     if (!isInitialLoad) {
       scrollToBottom();
@@ -84,11 +98,13 @@ export default function ChatPage({ params }: { params: { id: string } }) {
     try {
       const data: Chat = await api.get(`/api/chat/${params.id}`);
       const formattedMessages = data.messages.map((msg) => {
+        const feedback = msg.feedback?.rating ?? null;
         if (msg.role !== "assistant" || !msg.content)
           return {
             id: msg.id.toString(),
             role: msg.role,
             content: msg.content,
+            feedback,
           };
 
         try {
@@ -97,6 +113,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
               id: msg.id.toString(),
               role: msg.role,
               content: msg.content,
+              feedback,
             };
           }
 
@@ -124,6 +141,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
             role: msg.role,
             content: responseText || "",
             citations,
+            feedback,
           };
         } catch (e) {
           console.error("Failed to process message:", e);
@@ -131,6 +149,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
             id: msg.id.toString(),
             role: msg.role,
             content: msg.content,
+            feedback,
           };
         }
       });
@@ -264,6 +283,12 @@ export default function ChatPage({ params }: { params: { id: string } }) {
                     markdown={message.content}
                     citations={message.citations}
                   />
+                  <MessageFeedbackButtons
+                    chatId={params.id}
+                    messageId={message.id}
+                    initialRating={message.feedback ?? null}
+                    disabled={isLoading}
+                  />
                 </div>
               </div>
             ) : (
@@ -282,8 +307,12 @@ export default function ChatPage({ params }: { params: { id: string } }) {
           )}
           <div className="flex justify-start">
             {isLoading &&
-              processedMessages[processedMessages.length - 1]?.role !=
-                "assistant" && (
+              (!processedMessages.length ||
+                processedMessages[processedMessages.length - 1]?.role !==
+                  "assistant" ||
+                !processedMessages[
+                  processedMessages.length - 1
+                ]?.content?.trim()) && (
                 <div className="max-w-[80%] rounded-lg px-4 py-2 text-accent-foreground">
                   <div className="flex items-center space-x-1">
                     <div className="w-2 h-2 rounded-full bg-primary animate-bounce" />

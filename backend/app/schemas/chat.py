@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+from app.schemas.feedback import MessageFeedbackResponse
+
 class MessageBase(BaseModel):
     content: str
     role: str
@@ -14,6 +16,7 @@ class MessageResponse(MessageBase):
     chat_id: int
     created_at: datetime
     updated_at: datetime
+    feedback: Optional[MessageFeedbackResponse] = None
 
     class Config:
         from_attributes = True

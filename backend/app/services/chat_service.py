@@ -1,9 +1,8 @@
 import json
 import base64
-from typing import List, AsyncGenerator
+from typing import List, AsyncGenerator, Optional
 from sqlalchemy.orm import Session
-from langchain_openai import ChatOpenAI
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains import create_history_aware_retriever
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
@@ -14,18 +13,71 @@ from langchain.globals import set_verbose, set_debug
 from app.services.vector_store import VectorStoreFactory
 from app.services.embedding.embedding_factory import EmbeddingsFactory
 from app.services.llm.llm_factory import LLMFactory
+from app.services.feedback import build_feedback_prompt_block, retrieve_similar_feedback
 
-set_verbose(True)
-set_debug(True)
+set_verbose(False)
+set_debug(False)
+
+
+def _text_frame(text: str) -> str:
+    """Encode a Vercel AI data-stream text part."""
+    return f"0:{json.dumps(text)}\n"
+
+
+def _context_payload(docs: list) -> str:
+    """Encode retrieved docs as the citation prefix stored with the assistant message."""
+    serializable_context = [
+        {
+            "page_content": doc.page_content.replace('"', '\\"'),
+            "metadata": getattr(doc, "metadata", {}) or {},
+        }
+        for doc in docs
+    ]
+    encoded = base64.b64encode(
+        json.dumps({"context": serializable_context}).encode()
+    ).decode()
+    return f"{encoded}__LLM_RESPONSE__"
+
+
+def _answer_text(answer_chunk: object) -> str:
+    """Normalize a streamed RAG chunk to plain text."""
+    if answer_chunk is None:
+        return ""
+    if isinstance(answer_chunk, str):
+        return answer_chunk
+    content = getattr(answer_chunk, "content", None)
+    if isinstance(content, str) and content:
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict) and item.get("type") == "text":
+                parts.append(str(item.get("text", "")))
+        joined = "".join(parts)
+        if joined:
+            return joined
+    extra = getattr(answer_chunk, "additional_kwargs", None) or {}
+    for key in ("reasoning_content", "thinking", "reasoning"):
+        value = extra.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return ""
+
 
 async def generate_response(
     query: str,
     messages: dict,
     knowledge_base_ids: List[int],
     chat_id: int,
-    db: Session
+    db: Session,
+    user_id: Optional[int] = None,
 ) -> AsyncGenerator[str, None]:
     try:
+        # Keep the nginx/proxy connection alive while Ollama warms up.
+        yield '0:""\n'
+
         # Create user message
         user_message = Message(
             content=query,
@@ -70,7 +122,7 @@ async def generate_response(
         
         if not vector_stores:
             error_msg = "I don't have any knowledge base to help answer your question."
-            yield f'0:"{error_msg}"\n'
+            yield _text_frame(error_msg)
             yield 'd:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n'
             bot_message.content = error_msg
             db.commit()
@@ -81,6 +133,19 @@ async def generate_response(
         
         # Initialize the language model
         llm = LLMFactory.create()
+
+        chat_history = []
+        for message in messages["messages"]:
+            if message["role"] == "user":
+                chat_history.append(HumanMessage(content=message["content"]))
+            elif message["role"] == "assistant":
+                # if include __LLM_RESPONSE__, only use the last part
+                if "__LLM_RESPONSE__" in message["content"]:
+                    message["content"] = message["content"].split("__LLM_RESPONSE__")[-1]
+                chat_history.append(AIMessage(content=message["content"]))
+        # Current question is passed as `input`; keep prior turns only.
+        if chat_history and isinstance(chat_history[-1], HumanMessage):
+            chat_history = chat_history[:-1]
         
         # Create contextualize question prompt
         contextualize_q_system_prompt = (
@@ -96,12 +161,23 @@ async def generate_response(
             ("human", "{input}")
         ])
         
-        # Create history aware retriever
-        history_aware_retriever = create_history_aware_retriever(
-            llm, 
-            retriever,
-            contextualize_q_prompt
-        )
+        # Skip the extra rewrite LLM call on the first turn so streaming starts faster.
+        if chat_history:
+            retrieval_source = create_history_aware_retriever(
+                llm,
+                retriever,
+                contextualize_q_prompt
+            )
+            docs = await retrieval_source.ainvoke({
+                "input": query,
+                "chat_history": chat_history,
+            })
+        else:
+            docs = await retriever.ainvoke(query)
+
+        context_payload = _context_payload(docs)
+        yield _text_frame(context_payload)
+        full_response = context_payload
 
         # Create QA prompt
         qa_system_prompt = (
@@ -118,6 +194,14 @@ async def generate_response(
             "Remember: Cite contexts by their position number (1 for first context, 2 for second, etc.) and don't blindly "
             "repeat the contexts verbatim."
         )
+        if user_id is not None:
+            try:
+                feedback_examples = retrieve_similar_feedback(
+                    db, user_id=user_id, query=query
+                )
+                qa_system_prompt += build_feedback_prompt_block(feedback_examples)
+            except Exception:
+                print("Failed to retrieve chat feedback examples; continuing without them")
         qa_prompt = ChatPromptTemplate.from_messages([
             ("system", qa_system_prompt),
             MessagesPlaceholder("chat_history"),
@@ -135,72 +219,28 @@ async def generate_response(
             document_prompt=document_prompt
         )
 
-        # Create retrieval chain
-        rag_chain = create_retrieval_chain(
-            history_aware_retriever,
-            question_answer_chain,
-        )
-
-        # Generate response
-        chat_history = []
-        for message in messages["messages"]:
-            if message["role"] == "user":
-                chat_history.append(HumanMessage(content=message["content"]))
-            elif message["role"] == "assistant":
-                # if include __LLM_RESPONSE__, only use the last part
-                if "__LLM_RESPONSE__" in message["content"]:
-                    message["content"] = message["content"].split("__LLM_RESPONSE__")[-1]
-                chat_history.append(AIMessage(content=message["content"]))
-
-        full_response = ""
-        async for chunk in rag_chain.astream({
+        async for chunk in question_answer_chain.astream({
             "input": query,
-            "chat_history": chat_history
+            "chat_history": chat_history,
+            "context": docs,
         }):
-            if "context" in chunk:
-                serializable_context = []
-                for context in chunk["context"]:
-                    serializable_doc = {
-                        "page_content": context.page_content.replace('"', '\\"'),
-                        "metadata": context.metadata,
-                    }
-                    serializable_context.append(serializable_doc)
-                
-                # 先替换引号，再序列化
-                escaped_context = json.dumps({
-                    "context": serializable_context
-                })
+            answer_chunk = _answer_text(chunk)
+            if not answer_chunk:
+                continue
+            full_response += answer_chunk
+            yield _text_frame(answer_chunk)
 
-                # 转成 base64
-                base64_context = base64.b64encode(escaped_context.encode()).decode()
-
-                # 连接符号
-                separator = "__LLM_RESPONSE__"
-                
-                yield f'0:"{base64_context}{separator}"\n'
-                full_response += base64_context + separator
-
-            if "answer" in chunk:
-                answer_chunk = chunk["answer"]
-                full_response += answer_chunk
-                # Escape quotes and use json.dumps to properly handle special characters
-                escaped_chunk = (answer_chunk
-                    .replace('"', '\\"')
-                    .replace('\n', '\\n'))
-                yield f'0:"{escaped_chunk}"\n'
-            
-        # Update bot message content
+        yield 'd:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n'
         bot_message.content = full_response
         db.commit()
             
     except Exception as e:
         error_message = f"Error generating response: {str(e)}"
         print(error_message)
-        yield '3:{text}\n'.format(text=error_message)
+        yield f'3:{json.dumps(error_message)}\n'
+        yield 'd:{"finishReason":"error","usage":{"promptTokens":0,"completionTokens":0}}\n'
         
         # Update bot message with error
         if 'bot_message' in locals():
             bot_message.content = error_message
             db.commit()
-    finally:
-        db.close()

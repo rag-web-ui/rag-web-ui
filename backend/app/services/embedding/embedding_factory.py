@@ -25,10 +25,15 @@ class EmbeddingsFactory:
                 dashscope_api_key=settings.DASH_SCOPE_API_KEY
             )
         elif embeddings_provider == "ollama":
-            return OllamaEmbeddings(
-                model=settings.OLLAMA_EMBEDDINGS_MODEL,
-                base_url=settings.OLLAMA_API_BASE
-            )
+            ollama_kwargs = {
+                "model": settings.OLLAMA_EMBEDDINGS_MODEL,
+                "base_url": settings.OLLAMA_API_BASE,
+            }
+            if settings.OLLAMA_NUM_CTX is not None:
+                ollama_kwargs["num_ctx"] = settings.OLLAMA_NUM_CTX
+            if settings.ollama_client_kwargs:
+                ollama_kwargs["client_kwargs"] = settings.ollama_client_kwargs
+            return OllamaEmbeddings(**ollama_kwargs)
         elif embeddings_provider == "huggingface":
             model_kwargs = {}
             if settings.HUGGINGFACE_API_KEY:

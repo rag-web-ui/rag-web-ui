@@ -36,4 +36,10 @@ class Message(Base, TimestampMixin):
     chat_id = Column(Integer, ForeignKey("chats.id"), nullable=False)
 
     # Relationships
-    chat = relationship("Chat", back_populates="messages") 
+    chat = relationship("Chat", back_populates="messages")
+    feedback = relationship(
+        "MessageFeedback",
+        back_populates="message",
+        uselist=False,
+        cascade="all, delete-orphan",
+    ) 

@@ -1,17 +1,19 @@
 from datetime import timedelta
 from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
 from requests.exceptions import RequestException
+from sqlalchemy.orm import Session
 
 from app.core import security
-from app.core.security import get_current_user
 from app.core.config import settings
+from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.token import Token
+from app.schemas.token import AuthConfig, Token
 from app.schemas.user import UserCreate, UserResponse
+from app.services.user import get_or_create_default_user
 
 router = APIRouter()
 
@@ -79,6 +81,28 @@ def login_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/config", response_model=AuthConfig)
+def auth_config() -> Any:
+    """Return public auth settings used by the frontend."""
+    return AuthConfig(bypass_auth=settings.BYPASS_AUTH)
+
+
+@router.get("/bypass-token", response_model=Token)
+def bypass_token(db: Session = Depends(get_db)) -> Any:
+    """Issue a token for the default user when auth bypass is enabled."""
+    if not settings.BYPASS_AUTH:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Auth bypass is disabled",
+        )
+    user = get_or_create_default_user(db)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = security.create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
 
 @router.post("/test-token", response_model=UserResponse)
 def test_token(current_user: User = Depends(get_current_user)) -> Any:

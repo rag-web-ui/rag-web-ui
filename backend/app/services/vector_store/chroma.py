@@ -23,8 +23,12 @@ class ChromaVectorStore(BaseVectorStore):
             embedding_function=embedding_function,
         )
     def add_documents(self, documents: List[Document]) -> None:
-        """Add documents to Chroma"""
-        self._store.add_documents(documents)
+        """Add documents to Chroma."""
+        ids = [str(doc.id) for doc in documents if getattr(doc, "id", None)]
+        if len(ids) == len(documents):
+            self._store.add_documents(documents, ids=ids)
+        else:
+            self._store.add_documents(documents)
     
     def delete(self, ids: List[str]) -> None:
         """Delete documents from Chroma"""
