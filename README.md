@@ -37,6 +37,9 @@ It also provides OpenAPI interfaces for convenient knowledge base access via API
   - Automatic document chunking and vectorization
   - Support for async document processing and incremental updates
 
+  See [Build a knowledge base from web sources](docs/PARALLEL_WEB_SOURCES.md) for
+  an optional workflow using Parallel Search MCP to prepare Markdown research notes.
+
 - 🤖 **Advanced Dialogue Engine**
   - Precise retrieval and generation based on RAG
   - Support for multi-turn contextual dialogue
